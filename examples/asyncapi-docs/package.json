@@ -1,0 +1,14 @@
+{
+  "name": "@mqttkit/example-asyncapi-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mqttkit/aedes": "workspace:*",
+    "@mqttkit/asyncapi": "workspace:*",
+    "@mqttkit/core": "workspace:*"
+  }
+}

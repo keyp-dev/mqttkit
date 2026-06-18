@@ -14,7 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublish:check": "bun run test && bun run typecheck && bun run build",
     "publish:dry-run": "node scripts/publish.mjs --dry-run",
-    "publish:packages": "node scripts/publish.mjs"
+    "publish:packages": "node scripts/publish.mjs",
+    "publish:asyncapi": "node scripts/publish.mjs asyncapi"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

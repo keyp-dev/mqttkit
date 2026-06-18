@@ -15,6 +15,7 @@ mqttkit 不重新实现 MQTT 协议。CONNECT、SUBSCRIBE、PUBLISH、QoS、reta
 - `app.on()` 监听 client、publish、subscribe、ack、错误等 broker lifecycle events。
 - `app.publish()` 让外部服务、worker、consumer 通过 broker 主动推送消息给 MQTT client。
 - `@mqttkit/aedes` 基于 Aedes 提供 TCP MQTT 与 MQTT-over-WebSocket。
+- `@mqttkit/asyncapi` 从路由生成 AsyncAPI 3.0 文档，并通过 HTTP 提供可浏览的文档页面。
 - 面向 Bun 与 TypeScript。
 
 ## 安装
@@ -279,6 +280,8 @@ new MqttApp()
 - `examples/events`：监听 broker lifecycle events。
 - `examples/service-push`：外部服务调用 `app.publish()`，消息经 Aedes 投递到订阅中的 MQTT client。
 - `examples/kafka-bridge`：MQTT 消息写入 Kafka，并把 Kafka consumer 消息透传给 MQTT client。
+- `examples/asyncapi-docs`：通过 `@mqttkit/asyncapi` 提供 AsyncAPI 文档与浏览页面（独立 HTTP 端口）。
+- `examples/asyncapi-elysia`：Elysia 端口同时承载 AsyncAPI 文档与 MQTT-over-WebSocket（aedes ws 复用同一个 `http.Server`）。
 
 运行示例：
 
@@ -307,3 +310,4 @@ bun run build
 
 - `@mqttkit/core`：core application、router、middleware、context、event types 与 broker adapter 接口。
 - `@mqttkit/aedes`：Aedes adapter，提供 TCP MQTT 与 MQTT-over-WebSocket 接入。
+- `@mqttkit/asyncapi`：基于路由生成 AsyncAPI 3.0 文档与 HTTP 浏览页面。

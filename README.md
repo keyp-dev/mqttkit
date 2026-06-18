@@ -15,6 +15,7 @@ mqttkit does not reimplement the MQTT protocol. A broker such as Aedes owns CONN
 - `app.on()` observes broker lifecycle events such as client, publish, subscribe, ack, and errors.
 - `app.publish()` lets services, workers, and consumers push messages to MQTT clients through the broker.
 - `@mqttkit/aedes` provides TCP MQTT and MQTT-over-WebSocket support through Aedes.
+- `@mqttkit/asyncapi` generates AsyncAPI 3.0 documentation from routes and serves a browsable docs page.
 - Built for Bun and TypeScript.
 
 ## Installation
@@ -279,6 +280,8 @@ Use Aedes persistence adapters for offline queues, retain, QoS sessions, and dur
 - `examples/events`: broker lifecycle events.
 - `examples/service-push`: external service calls `app.publish()`, then Aedes delivers to subscribed MQTT clients.
 - `examples/kafka-bridge`: MQTT messages go to Kafka, and Kafka consumer messages are forwarded to MQTT clients.
+- `examples/asyncapi-docs`: AsyncAPI documentation served from `@mqttkit/asyncapi` (standalone HTTP).
+- `examples/asyncapi-elysia`: share a single Elysia port for both AsyncAPI docs and MQTT-over-WebSocket (aedes ws attached to the same `http.Server`).
 
 Run an example:
 
@@ -307,3 +310,4 @@ bun run build
 
 - `@mqttkit/core`: core application, router, middleware, context, event types, and broker adapter interface.
 - `@mqttkit/aedes`: Aedes adapter for TCP MQTT and MQTT-over-WebSocket.
+- `@mqttkit/asyncapi`: AsyncAPI 3.0 generator and HTTP plugin for browsable docs.

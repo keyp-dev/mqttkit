@@ -73,7 +73,27 @@ describe('@mqttkit/aedes', () => {
     await expect(message).resolves.toBe('command')
   })
 
-  test('middleware 可以拒绝 PUBLISH', async () => {
+  test('publish policy 可以拒绝 PUBLISH', async () => {
+    const adapter = new AedesBrokerAdapter({ tcp: { port: 0 }, ws: false })
+    let called = false
+
+    const app = new MqttApp()
+      .use({ setup: (app) => { app.broker(adapter) } })
+      .use(router().topic('devices/:uid/events', { publish: false, onMessage: () => { called = true } }))
+
+    await app.listen()
+    cleanup.push(() => stopApp(app))
+
+    const client = await connectMqtt(`mqtt://127.0.0.1:${adapter.getTcpAddress()?.port}`, {
+      clientId: 'blocked-client',
+    })
+    cleanup.push(() => endClient(client))
+
+    await expect(withTimeout(client.publishAsync('devices/demo/events', 'payload', { qos: 1 }), 500)).rejects.toThrow()
+    expect(called).toBe(false)
+  })
+
+  test('middleware 抛错会让 publisher 收到失败', async () => {
     const adapter = new AedesBrokerAdapter({ tcp: { port: 0 }, ws: false })
     let called = false
 
@@ -88,7 +108,7 @@ describe('@mqttkit/aedes', () => {
     cleanup.push(() => stopApp(app))
 
     const client = await connectMqtt(`mqtt://127.0.0.1:${adapter.getTcpAddress()?.port}`, {
-      clientId: 'blocked-client',
+      clientId: 'middleware-error-client',
     })
     cleanup.push(() => endClient(client))
 

@@ -15,7 +15,8 @@
     "baseUrl": ".",
     "paths": {
       "@mqttkit/core": ["packages/core/src/index.ts"],
-      "@mqttkit/aedes": ["packages/aedes/src/index.ts"]
+      "@mqttkit/aedes": ["packages/aedes/src/index.ts"],
+      "@mqttkit/asyncapi": ["packages/asyncapi/src/index.ts"]
     }
   },
   "include": ["packages/**/*.ts", "examples/**/*.ts", "vitest.config.ts"]
