@@ -1,0 +1,13 @@
+{
+  "name": "@mqttkit/example-aedes-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mqttkit/aedes": "workspace:*",
+    "@mqttkit/core": "workspace:*"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "@mqttkit/core",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Elysia-like MQTT application framework for TypeScript.",
+  "license": "MIT",
+  "homepage": "https://github.com/keyp-dev/mqttkit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/keyp-dev/mqttkit.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/keyp-dev/mqttkit/issues"
+  },
+  "keywords": [
+    "mqtt",
+    "mqtt-framework",
+    "aedes",
+    "router",
+    "middleware",
+    "typescript",
+    "bun"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "README.zh-CN.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
