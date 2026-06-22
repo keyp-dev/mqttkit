@@ -122,4 +122,66 @@ describe('MqttApp + router().topic()', () => {
       params: { uid: 'alice' },
     })
   })
+
+  test('canSubscribe 接受 MQTT 客户端的 + / # 通配符', async () => {
+    const broker = new TestBroker()
+    const app = new MqttApp()
+      .use({ setup: (app) => { app.broker(broker) } })
+      .use(
+        router()
+          .topic('server/:uid/commands')
+          .topic('private/:uid', {
+            subscribe: ({ params, clientId }) => params.uid === clientId,
+          }),
+      )
+
+    await app.listen()
+
+    // + 匹配单层但不绑定 uid → 通配订阅放行（默认 subscribe: true）
+    await expect(app.canSubscribe({ topic: 'server/+/commands', clientId: 'client-a' })).resolves.toEqual({
+      allowed: true,
+      params: {},
+    })
+
+    // 自定义 policy 依赖 params.uid，使用 + 时 uid 缺失 → 拒绝
+    await expect(app.canSubscribe({ topic: 'private/+', clientId: 'bob' })).resolves.toEqual({
+      allowed: false,
+      params: {},
+    })
+
+    // # 吃掉剩余段
+    await expect(app.canSubscribe({ topic: 'server/#', clientId: 'client-a' })).resolves.toEqual({
+      allowed: true,
+      params: {},
+    })
+  })
+
+  test('dispatch 走严格 match，pattern 里的 + / # 不再是通配符', async () => {
+    const broker = new TestBroker()
+    let called = false
+    const app = new MqttApp()
+      .use({ setup: (app) => { app.broker(broker) } })
+      // pattern 里出现 '+' 现在是字面值，不再是 MQTT 单层通配符
+      .use(router().topic('devices/+/events', { onMessage() { called = true } }))
+
+    await app.listen()
+
+    // 字面 '+' 不会匹配具体设备 id
+    const missed = await broker.dispatch({
+      topic: 'devices/abc/events',
+      payload: Buffer.from('x'),
+      clientId: 'client-a',
+    })
+    expect(missed).toBe(false)
+    expect(called).toBe(false)
+
+    // 完全字面相等才会派发
+    const hit = await broker.dispatch({
+      topic: 'devices/+/events',
+      payload: Buffer.from('x'),
+      clientId: 'client-a',
+    })
+    expect(hit).toBe(true)
+    expect(called).toBe(true)
+  })
 })

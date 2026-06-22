@@ -16,6 +16,7 @@ export function buildFromRoutes(
     const channelId = toChannelId(route.pattern)
     const address = toAsyncApiAddress(route.pattern)
     const params = extractParams(route.pattern)
+    const hasCatchAll = /(^|\/)\*(?=\/|$)/.test(route.pattern)
     const meta = (route.meta ?? {}) as RouteDocMeta
     const schema = route.config.schema
     const messageId = meta.message?.name ?? 'payload'
@@ -27,12 +28,15 @@ export function buildFromRoutes(
       examples: meta.examples?.map((payload) => ({ payload })),
     })
 
+    const parameters: Record<string, { description: string }> = Object.fromEntries(
+      params.map((name) => [name, { description: `Path parameter :${name}` }]),
+    )
+    if (hasCatchAll) parameters.rest = { description: 'Catch-all remaining path segments' }
+
     channels[channelId] = pruneEmpty({
       address,
       description: meta.description,
-      parameters: params.length
-        ? Object.fromEntries(params.map((name) => [name, { description: `Path parameter :${name}` }]))
-        : undefined,
+      parameters: Object.keys(parameters).length ? parameters : undefined,
       messages: { [messageId]: message },
       tags: meta.tags?.map((name) => ({ name })),
     })
@@ -80,15 +84,14 @@ function toChannelId(pattern: string): string {
     .filter(Boolean)
     .map((seg) => {
       if (seg.startsWith(':')) return `{${seg.slice(1)}}`
-      if (seg === '+') return 'plus'
-      if (seg === '#') return 'all'
+      if (seg === '*') return '{rest}'
       return seg
     })
     .join('.')
 }
 
 function toAsyncApiAddress(pattern: string): string {
-  return pattern.replace(/:(\w+)/g, '{$1}')
+  return pattern.replace(/:(\w+)/g, '{$1}').replace(/(^|\/)\*(?=\/|$)/g, '$1{rest}')
 }
 
 function extractParams(pattern: string): string[] {

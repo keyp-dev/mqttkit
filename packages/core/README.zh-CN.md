@@ -47,4 +47,33 @@ await app.listen()
 - `app.on(eventName, handler)` 监听 broker lifecycle events。
 - `app.publish(topic, payload, options)` 通过已配置 broker 从服务端发布消息。
 
+## Topic Pattern 语法
+
+Pattern 使用 Elysia 风格的段，而非 MQTT 通配符：
+
+| 段       | 含义                                                                   |
+| -------- | ---------------------------------------------------------------------- |
+| `foo`    | 字面段，需要精确相等。                                                 |
+| `:name`  | 命名参数，匹配单段并写入 `ctx.params.name`。                           |
+| `*`      | catch-all，必须放在最后，剩余段拼接后写入 `ctx.params['*']`。          |
+
+```ts
+router()
+  .topic('devices/:uid/events')      // ctx.params.uid
+  .topic('files/*')                  // ctx.params['*'] = 'a/b/c'
+  .topic('users/:uid/inbox/*')       // 两者并用
+```
+
+MQTT 的 `+` / `#` **不**属于 pattern 语法 —— 写在 pattern 里只会被当成字面字符。
+它们只在客户端订阅一侧被识别：客户端用包含 `+` / `#` 的 topic 订阅时，mqttkit
+会和路由 pattern 做"通配符匹配通配符"的判断，**不会**把任何值绑定到 `:name`。
+所以依赖 `params.uid` 的 subscribe policy 在面对通配订阅时会自然失败。
+
+```ts
+// Pattern: 'devices/:uid/events'
+// 客户端订阅 'devices/+/events' → 命中，params = {}
+// 客户端订阅 'devices/#'        → 命中，params = {}
+// 客户端订阅 'devices/abc/x'    → 未命中
+```
+
 完整示例见仓库 README。

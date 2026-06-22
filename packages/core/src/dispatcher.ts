@@ -42,7 +42,7 @@ export class Dispatcher<TState extends MqttAppState = MqttAppState> {
 
   async canSubscribe(input: SubscribeCheckInput<TState['principal']>): Promise<SubscribeCheckResult> {
     for (const route of this.options.routes) {
-      const params = route.compiled.match(input.topic)
+      const params = route.compiled.matchSubscription(input.topic)
       if (!params) continue
 
       const allowed = await evaluatePolicy(route.subscribe, {
