@@ -7,7 +7,53 @@ together stay readable.
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
-## 2026-06-22
+## 2026-06-22 — 0.2.1
+
+`@mqttkit/core@0.2.1`
+
+### Added — `@mqttkit/core` 0.2.1
+
+- **MQTT 5 shared subscriptions** (`$share/<group>/<filter>`).
+  `parseSharedSubscription()` follows §4.8.2; `canSubscribe()` strips the
+  prefix before route matching and exposes `shared.group` to the subscribe
+  policy. Lets you deploy multiple consumer instances behind one broker
+  without custom load-balancing.
+- **Per-route `timeout` and `concurrency`**. `topic({ timeout, concurrency })`
+  guards handler execution. Timeout surfaces as `phase: 'timeout'`; concurrency
+  rejection surfaces as `phase: 'overload'`. Inflight count is tracked on the
+  route for use by metrics and graceful shutdown.
+- **`app.onMetric(handler)`**. Emits a structured `MqttMetricEvent` once per
+  dispatch and once per publish — `{ type, topic, route?, durationMs, result,
+  errorPhase? }`. Designed to feed Prometheus / OpenTelemetry / statsd without
+  middleware around every route.
+- **Graceful shutdown**. `app.stop({ drain: true, timeout: 30_000 })` is now
+  the default behaviour: the dispatcher refuses new inbound dispatches, polls
+  every route's `inflight` count to zero (or until the timeout), then runs
+  `onStop` hooks, cancels in-flight RPC, and stops the broker adapter.
+  `app.activeCount()` reports the current sum of in-flight handlers for health
+  checks. Pass `{ drain: false }` for the legacy immediate shutdown.
+- **MQTT 5 user properties on `ctx`**. `ctx.userProperties` exposes inbound
+  `packet.properties.userProperties` as a flat read view, so middleware can
+  extract `traceparent`, correlation IDs, or any side-band metadata without
+  touching adapter-specific packet shape.
+- **Outbound publish hooks**. `app.onBeforePublish(hook)` runs immediately
+  before every outbound publish (both `app.publish()` and `ctx.publish()` /
+  `ctx.reply()` / `app.request()`, which all funnel through the same path).
+  Hooks receive a mutable `{ topic, payload, options }` view and can mutate
+  `options` — typical use is merging `traceparent` into
+  `options.properties.userProperties` so OTel context propagates across
+  brokers. A throw aborts the publish and surfaces through `onError` with
+  `phase: 'publish'`.
+- **Raw payload on `onError`**. `MqttErrorPayload.payload` carries the raw
+  buffer for inbound phases (`validation` / `policy` / `middleware` / `handler` /
+  `timeout` / `overload`) and the original `MqttPayload` for `publish`. Lets
+  exporters (Sentry, structured logs) capture the offending message body, not
+  just the topic.
+- **New docs pages** under the Production section: `Shared Subscriptions`,
+  `Handler Timeout & Concurrency`, `Metrics`, `Graceful Shutdown`,
+  `Tracing & User Properties` (with full OpenTelemetry wiring example).
+
+## 2026-06-22 — 0.2.0
 
 `@mqttkit/core@0.2.0`, `@mqttkit/aedes@0.2.0`, `@mqttkit/asyncapi@0.2.0`,
 `@mqttkit/typebox@0.1.0` (initial), `@mqttkit/zod@0.1.0` (initial).

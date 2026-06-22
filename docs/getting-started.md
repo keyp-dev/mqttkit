@@ -58,6 +58,30 @@ Default policies:
 - A topic with `onMessage` defaults to `publish: true` and `subscribe: false`.
 - A topic without `onMessage` defaults to `publish: false` and `subscribe: true`.
 
+## Dispatch Pipeline
+
+Every inbound PUBLISH walks the same pipeline. Each stage can short-circuit the rest, and any throw is caught by `onError` with the matching phase tag.
+
+```mermaid
+flowchart TD
+  In([Broker delivers PUBLISH]) --> Match{Topic<br/>match?}
+  Match -- miss --> Drop([Unmatched])
+  Match -- hit --> Pol{publish<br/>policy?}
+  Pol -- deny --> Drop
+  Pol -- allow --> AppMw[App middleware chain]
+  AppMw --> RouteMw[Router middleware chain]
+  RouteMw --> Val[Schema validation]
+  Val --> Gate[Concurrency &amp; timeout gate]
+  Gate --> Handler[onMessage handler]
+  Handler --> Done([Metric: result = ok])
+  Val -. throws .-> Err[onError phase tag]
+  Gate -. throws .-> Err
+  Handler -. throws .-> Err
+  AppMw -. throws .-> Err
+  RouteMw -. throws .-> Err
+  Err --> Metric([Metric: result = error])
+```
+
 ## Middleware
 
 `use()` runs in registration order.

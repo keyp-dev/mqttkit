@@ -2,6 +2,8 @@ import type { MqttApp } from './app.js'
 import type { BrokerMessage, MqttPayload, PublishOptions } from './broker.js'
 import type { TopicRoute } from './router.js'
 
+export type { MqttPayload } from './broker.js'
+
 export type MqttAppState = {
   principal?: unknown
   services?: Record<string, unknown>
@@ -27,6 +29,13 @@ export type MqttContext<
   principal: TState['principal']
   services: NonNullable<TState['services']>
   packet?: unknown
+  /**
+   * MQTT 5 user properties from the inbound publish, if any. A flat read view
+   * of `packet.properties.userProperties` — handy for trace propagation,
+   * correlation IDs, or any other side-band metadata without touching the
+   * adapter-specific raw packet shape.
+   */
+  userProperties?: Record<string, string | string[]>
   route: {
     pattern: string
     meta?: unknown
@@ -60,6 +69,12 @@ export type MqttPolicyInput<
   params: TParams
   clientId: string
   principal?: TPrincipal
+  /**
+   * Set when the inbound subscription was an MQTT 5 shared subscription
+   * (`$share/<group>/<topic-filter>`). `topic` and `params` are derived from
+   * the stripped topic filter so route matching is uniform.
+   */
+  shared?: { group: string }
   route: {
     pattern: string
     meta?: unknown
@@ -80,12 +95,26 @@ export type ContextFactoryInput<TState extends MqttAppState> = {
   params: Record<string, string>
 }
 
-export type MqttErrorPhase = 'middleware' | 'handler' | 'validation' | 'policy' | 'publish'
+export type MqttErrorPhase =
+  | 'middleware'
+  | 'handler'
+  | 'validation'
+  | 'policy'
+  | 'publish'
+  | 'timeout'
+  | 'overload'
 
 export type MqttErrorPayload<TState extends MqttAppState = MqttAppState> = {
   error: unknown
   topic: string
   phase: MqttErrorPhase
+  /**
+   * Raw payload that triggered the error.
+   * - Inbound phases (`validation`, `policy`, `middleware`, `handler`): the `Buffer` from the broker.
+   * - Outbound phase (`publish`): the original `MqttPayload` passed to `app.publish()` (may be a string, object, Uint8Array, …).
+   * Undefined only when no payload context applies.
+   */
+  payload?: MqttPayload
   route?: { pattern: string; meta?: unknown }
   ctx?: MqttContext<TState>
 }

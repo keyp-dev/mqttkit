@@ -52,6 +52,29 @@ export function joinTopic(prefix: string | undefined, topic: string): string {
   return normalizeTopic([prefix, topic].filter(Boolean).join('/'))
 }
 
+export type SharedSubscription = { group: string; topic: string }
+
+const SHARED_PREFIX = '$share/'
+
+/**
+ * Parse an MQTT 5 shared subscription filter (`$share/<group>/<topic-filter>`).
+ * Returns the group + actual topic filter, or `null` for a normal subscription.
+ *
+ * Group rules per MQTT 5 §4.8.2: non-empty, no `/`, `+`, or `#`.
+ */
+export function parseSharedSubscription(topic: string): SharedSubscription | null {
+  const normalized = topic.trim()
+  if (!normalized.startsWith(SHARED_PREFIX)) return null
+  const rest = normalized.slice(SHARED_PREFIX.length)
+  const slash = rest.indexOf('/')
+  if (slash <= 0) return null
+  const group = rest.slice(0, slash)
+  const remainder = rest.slice(slash + 1)
+  if (remainder.length === 0) return null
+  if (group.includes('+') || group.includes('#')) return null
+  return { group, topic: remainder }
+}
+
 function compileSegment(segment: string): Segment {
   if (segment === '*') return { type: 'wildcard' }
   if (segment.startsWith(':')) {

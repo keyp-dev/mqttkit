@@ -56,6 +56,18 @@ export type TopicConfig<
    * server-side publish; `'both'` to validate both directions.
    */
   validate?: ValidateMode
+  /**
+   * Maximum time (ms) the handler pipeline (route middleware + onMessage) may
+   * run. When exceeded, the handler is abandoned and the failure is routed
+   * through `onError` with `phase: 'timeout'`. Default: unlimited.
+   */
+  timeout?: number
+  /**
+   * Maximum number of in-flight handler invocations for this route. When the
+   * limit is reached, additional inbound messages are dropped and reported
+   * through `onError` with `phase: 'overload'`. Default: unlimited.
+   */
+  concurrency?: number
   /** Route-scoped error handler. Runs before any app-level `onError`. */
   onError?: MqttErrorHandler<TState>
   meta?: unknown
@@ -82,6 +94,10 @@ export type TopicRoute<TState extends MqttAppState = MqttAppState> = {
   /** Whether the user explicitly set `validate`; if not, the default is re-derived at app init. */
   explicitValidate?: ValidateMode
   validate: ValidateMode
+  timeout?: number
+  concurrency?: number
+  /** Mutated by the dispatcher to track in-flight handler invocations. */
+  inflight: number
   onError?: MqttErrorHandler<TState>
   meta?: unknown
 }
@@ -152,6 +168,9 @@ export class MqttRouter<TState extends MqttAppState = MqttAppState> implements M
       schema: standardSchema,
       explicitValidate: config.validate,
       validate,
+      timeout: config.timeout,
+      concurrency: config.concurrency,
+      inflight: 0,
       onError: config.onError,
       meta: config.meta ?? this.options.meta,
     })

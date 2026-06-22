@@ -1,6 +1,6 @@
 {
   "name": "@mqttkit/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Elysia-like MQTT application framework for TypeScript.",
   "license": "MIT",

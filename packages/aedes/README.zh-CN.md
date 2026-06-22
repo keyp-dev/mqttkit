@@ -2,7 +2,9 @@
 
 [English](README.md)
 
-Aedes adapter for mqttkit。它把 `MqttApp` 接到标准 MQTT TCP 与 MQTT-over-WebSocket transport，同时把路由、middleware、策略、事件和服务注入保留在 mqttkit 侧。
+mqttkit 的 Aedes adapter。把 `MqttApp` 接到 MQTT TCP 和 MQTT-over-WebSocket；QoS、retain、session、离线投递、持久化都交给 Aedes。
+
+完整文档：**<https://mqttkit.keyp.dev/zh/>**。
 
 ## 安装
 
@@ -17,38 +19,33 @@ import { aedes } from '@mqttkit/aedes'
 import { MqttApp, router } from '@mqttkit/core'
 
 const app = new MqttApp()
+  .use(aedes({
+    tcp: { port: 1883 },
+    ws: { port: 8888, path: '/mqtt' },
+    authenticate({ username }) {
+      if (!username) return false
+      return { uid: username }
+    },
+  }))
   .use(
-    aedes({
-      tcp: { port: 1883 },
-      ws: { port: 8888, path: '/mqtt' },
-      authenticate({ username }) {
-        if (!username) return false
-        return { uid: username }
+    router().topic('devices/:uid/events', {
+      async onMessage(ctx) {
+        await ctx.publish(`server/${ctx.params.uid}/commands`, ctx.payload)
       },
     }),
-  )
-  .use(
-    router()
-      .topic('devices/:uid/events', {
-        async onMessage(ctx) {
-          await ctx.publish(`server/${ctx.params.uid}/commands`, ctx.payload)
-        },
-      })
-      .topic('server/:uid/commands'),
   )
 
 await app.listen()
 ```
 
-## 能力
+## 功能
 
-- 启动 TCP MQTT server。
-- 启动 MQTT-over-WebSocket server。
-- 接入外部 Aedes instance。
-- 把 MQTT-over-WebSocket 挂载到已有 HTTP server。
-- 将 Aedes lifecycle events 转发到 `app.on(...)`。
-- 将认证得到的 principal 注入 mqttkit policy 与 handler。
-- 将 publish / subscribe 授权委托给 mqttkit route。
-- 透传 Aedes persistence 配置。
+- TCP MQTT server、MQTT-over-WebSocket server，或接到已有的 `http.Server`。
+- `authenticate` 回调返回的 principal 自动注入 `ctx.principal`，供 mqttkit policy 与 handler 使用。
+- 把 publish / subscribe 授权委托给 mqttkit 路由（共享订阅 `$share/<group>/<filter>` 自动解析后交给 subscribe policy）。
+- 透传 MQTT 5 publish properties（`responseTopic`、`correlationData`、`userProperties` 等），`app.request()` RPC 与 tracing 依赖这一点。
+- Aedes lifecycle events 转发到 `app.on(...)`；Aedes persistence 配置原样透传。
 
-QoS、retain、session state、offline delivery 和 persistence 等 MQTT 协议行为由 Aedes 及其 persistence adapter 负责。
+## 文档
+
+- [快速开始](https://mqttkit.keyp.dev/zh/getting-started) · [Aedes 适配器](https://mqttkit.keyp.dev/zh/aedes)

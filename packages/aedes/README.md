@@ -2,7 +2,9 @@
 
 [简体中文](README.zh-CN.md)
 
-Aedes adapter for mqttkit. It connects `MqttApp` to standard MQTT TCP and MQTT-over-WebSocket transports while keeping routing, middleware, policies, events, and service injection in mqttkit.
+Aedes adapter for mqttkit. Connects `MqttApp` to MQTT TCP and MQTT-over-WebSocket; QoS, retain, sessions, offline delivery, and persistence stay with Aedes.
+
+Full documentation: **<https://mqttkit.keyp.dev>**.
 
 ## Install
 
@@ -17,38 +19,33 @@ import { aedes } from '@mqttkit/aedes'
 import { MqttApp, router } from '@mqttkit/core'
 
 const app = new MqttApp()
+  .use(aedes({
+    tcp: { port: 1883 },
+    ws: { port: 8888, path: '/mqtt' },
+    authenticate({ username }) {
+      if (!username) return false
+      return { uid: username }
+    },
+  }))
   .use(
-    aedes({
-      tcp: { port: 1883 },
-      ws: { port: 8888, path: '/mqtt' },
-      authenticate({ username }) {
-        if (!username) return false
-        return { uid: username }
+    router().topic('devices/:uid/events', {
+      async onMessage(ctx) {
+        await ctx.publish(`server/${ctx.params.uid}/commands`, ctx.payload)
       },
     }),
-  )
-  .use(
-    router()
-      .topic('devices/:uid/events', {
-        async onMessage(ctx) {
-          await ctx.publish(`server/${ctx.params.uid}/commands`, ctx.payload)
-        },
-      })
-      .topic('server/:uid/commands'),
   )
 
 await app.listen()
 ```
 
-## Features
+## What's Included
 
-- Start a TCP MQTT server.
-- Start an MQTT-over-WebSocket server.
-- Attach to an existing Aedes instance.
-- Attach MQTT-over-WebSocket to an existing HTTP server.
-- Forward Aedes lifecycle events to `app.on(...)`.
-- Inject authenticated principals into mqttkit policies and handlers.
-- Delegate publish and subscribe authorization to mqttkit routes.
-- Pass Aedes persistence options through to the broker.
+- TCP MQTT server, MQTT-over-WebSocket server, or attach to an existing `http.Server`.
+- `authenticate` callback returns a principal injected into mqttkit policies and handlers as `ctx.principal`.
+- Publish / subscribe authorization delegated to mqttkit routes (and shared-subscription `$share/<group>/<filter>` is decoded for the subscribe policy).
+- Forwards MQTT 5 publish properties (`responseTopic`, `correlationData`, `userProperties`, …) needed for `app.request()` RPC and tracing.
+- Aedes lifecycle events forwarded to `app.on(...)`; Aedes persistence options passed through.
 
-MQTT protocol behavior such as QoS, retain, session state, offline delivery, and persistence is handled by Aedes and its persistence adapters.
+## Docs
+
+- [Getting Started](https://mqttkit.keyp.dev/getting-started) · [Aedes adapter](https://mqttkit.keyp.dev/aedes)

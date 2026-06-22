@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "test": "bun test packages/core/src/matcher.test.ts packages/core/src/pattern.test.ts packages/core/src/schema.test.ts packages/core/src/error.test.ts packages/core/src/rpc.test.ts packages/core/src/app.test.ts packages/core/src/testing.test.ts packages/aedes/src/aedes-adapter.test.ts packages/typebox/src/typebox.test.ts packages/zod/src/zod.test.ts",
+    "test": "bun test packages/core/src/matcher.test.ts packages/core/src/pattern.test.ts packages/core/src/schema.test.ts packages/core/src/error.test.ts packages/core/src/rpc.test.ts packages/core/src/app.test.ts packages/core/src/testing.test.ts packages/core/src/metrics.test.ts packages/aedes/src/aedes-adapter.test.ts packages/typebox/src/typebox.test.ts packages/zod/src/zod.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublish:check": "bun run test && bun run typecheck && bun run build",
     "publish:dry-run": "node scripts/publish.mjs --dry-run",
@@ -27,8 +27,10 @@
   "devDependencies": {
     "@types/node": "^25.9.3",
     "bun-types": "^1.3.4",
+    "mermaid": "^11.15.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitepress": "^1.6.4"
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17"
   }
 }

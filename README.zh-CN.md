@@ -14,6 +14,9 @@ mqttkit 不重新实现 MQTT 协议。CONNECT、SUBSCRIBE、PUBLISH、QoS、reta
 - `router().topic()` 声明 MQTT topic route 及发布 / 订阅策略。
 - topic 参数（`devices/:uid/events`），payload 校验支持任意 [Standard Schema](https://standardschema.dev/) 校验器，`ctx` 上可注入业务服务。
 - MQTT 5 RPC：`app.request()` + `ctx.reply()`。
+- MQTT 5 共享订阅（`$share/<group>/<filter>`），原生支持多实例扇出。
+- 路由级 `timeout` / `concurrency` 护栏，触发后通过 `onError` 阶段上报。
+- `app.onMetric()` 在每次 dispatch / publish 完成时发结构化事件，方便接 Prometheus / OpenTelemetry。
 - `app.on()` 监听 broker lifecycle events；`app.publish()` 让 worker 主动推送消息。
 - 适配器：`@mqttkit/aedes`（TCP + WebSocket）与 `@mqttkit/asyncapi`（AsyncAPI 3.0 文档）。
 - 内存版 `TestBroker` 用于单测。面向 Bun 与 TypeScript。

@@ -14,6 +14,9 @@ Full documentation: **<https://mqttkit.keyp.dev>** ([简体中文](https://mqttk
 - `router().topic()` declares MQTT topic routes with publish / subscribe policies.
 - Topic params (`devices/:uid/events`), payload validation via any [Standard Schema](https://standardschema.dev/) validator, and injected services on `ctx`.
 - MQTT 5 RPC with `app.request()` and `ctx.reply()`.
+- MQTT 5 shared subscriptions (`$share/<group>/<filter>`) for multi-instance fan-out.
+- Per-route `timeout` and `concurrency` guards surface as `onError` phases.
+- `app.onMetric()` emits structured per-dispatch / per-publish events for Prometheus / OpenTelemetry.
 - `app.on()` observes broker lifecycle events; `app.publish()` lets workers push messages.
 - Adapters: `@mqttkit/aedes` (TCP + WebSocket) and `@mqttkit/asyncapi` (AsyncAPI 3.0 docs).
 - In-memory `TestBroker` for unit tests. Built for Bun and TypeScript.

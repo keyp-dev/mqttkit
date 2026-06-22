@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const GITHUB_REPO = 'https://github.com/keyp-dev/mqttkit'
 
@@ -34,29 +35,80 @@ type SidebarTopic = {
   zh: string
 }
 
-// Single source of truth for the guide sidebar order (matches plan R3).
-const GUIDE_TOPICS: SidebarTopic[] = [
-  { id: 'getting-started', en: 'Getting Started', zh: '快速开始' },
-  { id: 'aedes', en: 'Aedes Adapter', zh: 'Aedes 适配器' },
-  { id: 'schema', en: 'Schema Validation', zh: 'Schema 校验' },
-  { id: 'rpc', en: 'RPC', zh: 'RPC' },
-  { id: 'events', en: 'Events', zh: '事件监听' },
-  { id: 'service-push', en: 'Service Push', zh: 'Service Push' },
-  { id: 'kafka-bridge', en: 'Kafka Bridge', zh: 'Kafka Bridge' },
-  { id: 'testing', en: 'Testing', zh: '测试' },
+type SidebarSection = {
+  en: string
+  zh: string
+  topics: SidebarTopic[]
+}
+
+// Single source of truth for the guide sidebar — grouped by intent so the
+// reading path (introduce → adapt → wire → integrate → harden → verify) is
+// obvious without anyone having to read all 11 pages to find what they need.
+const GUIDE_SECTIONS: SidebarSection[] = [
+  {
+    en: 'Introduction',
+    zh: '入门',
+    topics: [
+      { id: 'getting-started', en: 'Getting Started', zh: '快速开始' },
+    ],
+  },
+  {
+    en: 'Broker Adapters',
+    zh: 'Broker 适配器',
+    topics: [
+      { id: 'aedes', en: 'Aedes Adapter', zh: 'Aedes 适配器' },
+    ],
+  },
+  {
+    en: 'Message Handling',
+    zh: '消息处理',
+    topics: [
+      { id: 'schema', en: 'Schema Validation', zh: 'Schema 校验' },
+      { id: 'rpc', en: 'RPC', zh: 'RPC' },
+      { id: 'events', en: 'Events', zh: '事件监听' },
+    ],
+  },
+  {
+    en: 'Service Integration',
+    zh: '服务集成',
+    topics: [
+      { id: 'service-push', en: 'Service Push', zh: 'Service Push' },
+      { id: 'kafka-bridge', en: 'Kafka Bridge', zh: 'Kafka Bridge' },
+    ],
+  },
+  {
+    en: 'Production',
+    zh: '生产部署',
+    topics: [
+      { id: 'shared-subscriptions', en: 'Shared Subscriptions', zh: '共享订阅' },
+      { id: 'handler-limits', en: 'Handler Timeout & Concurrency', zh: 'Handler 超时与并发' },
+      { id: 'graceful-shutdown', en: 'Graceful Shutdown', zh: '优雅关停' },
+      { id: 'metrics', en: 'Metrics', zh: '指标' },
+      { id: 'tracing', en: 'Tracing & User Properties', zh: 'Tracing 与 User Properties' },
+    ],
+  },
+  {
+    en: 'Testing',
+    zh: '测试',
+    topics: [
+      { id: 'testing', en: 'Testing', zh: '测试' },
+    ],
+  },
 ]
 
-const enSidebarItems = GUIDE_TOPICS.map((topic) => ({
-  text: topic.en,
-  link: `/${topic.id}`,
+const enSidebarGroups = GUIDE_SECTIONS.map((section) => ({
+  text: section.en,
+  collapsed: false,
+  items: section.topics.map((topic) => ({ text: topic.en, link: `/${topic.id}` })),
 }))
 
-const zhSidebarItems = GUIDE_TOPICS.map((topic) => ({
-  text: topic.zh,
-  link: `/zh/${topic.id}`,
+const zhSidebarGroups = GUIDE_SECTIONS.map((section) => ({
+  text: section.zh,
+  collapsed: false,
+  items: section.topics.map((topic) => ({ text: topic.zh, link: `/zh/${topic.id}` })),
 }))
 
-export default defineConfig({
+export default withMermaid({
   title: 'mqttkit',
   description:
     'Elysia-style MQTT application framework. Compose broker adapters, middleware, topic routers, validation, and services.',
@@ -103,14 +155,9 @@ export default defineConfig({
           { text: 'Guide', link: '/getting-started' },
           { text: 'Packages', link: `${GITHUB_REPO}/tree/main/packages` },
           { text: 'Examples', link: `${GITHUB_REPO}/tree/main/examples` },
-          { text: 'Changelog', link: `${GITHUB_REPO}/blob/main/CHANGELOG.md` },
+          { text: 'Changelog', link: '/changelog' },
         ],
-        sidebar: [
-          {
-            text: 'Guide',
-            items: enSidebarItems,
-          },
-        ],
+        sidebar: enSidebarGroups,
         editLink: {
           pattern: `${GITHUB_REPO}/edit/main/docs/:path`,
           text: 'Edit this page on GitHub',
@@ -129,15 +176,10 @@ export default defineConfig({
           { text: '指南', link: '/zh/getting-started' },
           { text: '包', link: `${GITHUB_REPO}/tree/main/packages` },
           { text: '示例', link: `${GITHUB_REPO}/tree/main/examples` },
-          { text: '更新日志', link: `${GITHUB_REPO}/blob/main/CHANGELOG.md` },
+          { text: '更新日志', link: '/zh/changelog' },
         ],
         sidebar: {
-          '/zh/': [
-            {
-              text: '指南',
-              items: zhSidebarItems,
-            },
-          ],
+          '/zh/': zhSidebarGroups,
         },
         outline: { label: '本页目录' },
         docFooter: { prev: '上一页', next: '下一页' },
@@ -155,6 +197,15 @@ export default defineConfig({
           message: '基于 MIT 协议发布',
         },
       },
+    },
+  },
+  mermaid: {},
+  vite: {
+    optimizeDeps: {
+      include: ['mermaid', 'dayjs', 'cytoscape', 'cytoscape-cose-bilkent'],
+    },
+    ssr: {
+      noExternal: ['mermaid', 'dayjs'],
     },
   },
 })

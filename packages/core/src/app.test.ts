@@ -123,6 +123,45 @@ describe('MqttApp + router().topic()', () => {
     })
   })
 
+  test('canSubscribe 识别 MQTT 5 $share/<group>/<filter>，剥离前缀后再匹配并把 group 传给 policy', async () => {
+    const broker = new TestBroker()
+    const policyInputs: Array<{ group?: string; topic: string; uid?: string }> = []
+
+    const app = new MqttApp()
+      .use({ setup: (app) => { app.broker(broker) } })
+      .use(
+        router()
+          .topic('orders/:id/created', {
+            subscribe: ({ topic, params, shared }) => {
+              policyInputs.push({ topic, group: shared?.group, uid: params.id })
+              // 只允许 billing / fulfillment 两个 group 共享订阅
+              return shared ? ['billing', 'fulfillment'].includes(shared.group) : true
+            },
+          }),
+      )
+
+    await app.listen()
+
+    await expect(
+      app.canSubscribe({ topic: '$share/billing/orders/+/created', clientId: 'svc-1' }),
+    ).resolves.toEqual({ allowed: true, params: {} })
+
+    await expect(
+      app.canSubscribe({ topic: '$share/unknown/orders/+/created', clientId: 'svc-2' }),
+    ).resolves.toEqual({ allowed: false, params: {} })
+
+    // 非 $share 普通订阅 → shared 为 undefined
+    await expect(
+      app.canSubscribe({ topic: 'orders/123/created', clientId: 'svc-3' }),
+    ).resolves.toEqual({ allowed: true, params: { id: '123' } })
+
+    expect(policyInputs).toEqual([
+      { topic: 'orders/+/created', group: 'billing', uid: undefined },
+      { topic: 'orders/+/created', group: 'unknown', uid: undefined },
+      { topic: 'orders/123/created', group: undefined, uid: '123' },
+    ])
+  })
+
   test('canSubscribe 接受 MQTT 客户端的 + / # 通配符', async () => {
     const broker = new TestBroker()
     const app = new MqttApp()
@@ -154,6 +193,184 @@ describe('MqttApp + router().topic()', () => {
       allowed: true,
       params: {},
     })
+  })
+
+  test('ctx.userProperties 暴露入站 MQTT 5 user properties，便于 trace 传播', async () => {
+    const broker = new TestBroker()
+    let seen: Record<string, string | string[]> | undefined
+
+    const app = new MqttApp()
+      .use({ setup: (a) => { a.broker(broker) } })
+      .use(
+        router().topic('telemetry/:id', {
+          onMessage(ctx) {
+            seen = ctx.userProperties
+          },
+        }),
+      )
+
+    await app.listen()
+    await broker.dispatch({
+      topic: 'telemetry/x',
+      payload: Buffer.from('p'),
+      clientId: 'c-1',
+      packet: { properties: { userProperties: { traceparent: '00-abc-def-01', baggage: 'x=1' } } },
+    })
+
+    expect(seen).toEqual({ traceparent: '00-abc-def-01', baggage: 'x=1' })
+  })
+
+  test('app.onBeforePublish hook 可以在 publish 前改写 options（含 user properties 注入）', async () => {
+    const broker = new TestBroker()
+    const app = new MqttApp()
+      .use({ setup: (a) => { a.broker(broker) } })
+      .use(router().topic('out/:id'))
+      .onBeforePublish((c) => {
+        c.options.properties = {
+          ...c.options.properties,
+          userProperties: {
+            ...c.options.properties?.userProperties,
+            traceparent: '00-xxx-yyy-01',
+          },
+        }
+      })
+      .onBeforePublish((c) => {
+        // 第二个 hook 能看到前一个 hook 的修改
+        c.options.qos = 1
+      })
+
+    await app.listen()
+    await app.publish('out/42', 'hello')
+
+    expect(broker.published).toHaveLength(1)
+    expect(broker.published[0].options).toMatchObject({
+      qos: 1,
+      properties: { userProperties: { traceparent: '00-xxx-yyy-01' } },
+    })
+    expect(broker.published[0].payload.toString()).toBe('hello')
+  })
+
+  test('onBeforePublish hook 抛错被 onError 拦截并阻止 broker.publish 被调用', async () => {
+    const broker = new TestBroker()
+    const errors: string[] = []
+    const app = new MqttApp()
+      .use({ setup: (a) => { a.broker(broker) } })
+      .use(router().topic('out/:id'))
+      .onError(({ phase, error }) => {
+        errors.push(`${phase}:${(error as Error).message}`)
+      })
+      .onBeforePublish(() => {
+        throw new Error('hook rejected')
+      })
+
+    await app.listen()
+    await expect(app.publish('out/1', 'x')).rejects.toThrow('hook rejected')
+    expect(broker.published).toHaveLength(0)
+    expect(errors).toEqual(['publish:hook rejected'])
+  })
+
+  test('stop({ drain: true }) 等待在飞 handler 跑完再关 broker，且关闭后拒绝新消息', async () => {
+    const broker = new TestBroker()
+    let resolveHandler!: () => void
+    const handlerEntered = new Promise<void>((resolve) => {
+      resolveHandler = resolve
+    })
+    let releaseHandler!: () => void
+    const handlerHold = new Promise<void>((resolve) => {
+      releaseHandler = resolve
+    })
+    let handlerFinished = false
+
+    const app = new MqttApp()
+      .use({ setup: (a) => { a.broker(broker) } })
+      .use(
+        router().topic('devices/:uid/events', {
+          async onMessage() {
+            resolveHandler()
+            await handlerHold
+            handlerFinished = true
+          },
+        }),
+      )
+
+    await app.listen()
+
+    // Start a dispatch that will hang inside the handler.
+    const inflight = broker.dispatch({
+      topic: 'devices/demo/events',
+      payload: Buffer.from('1'),
+      clientId: 'c-1',
+    })
+
+    await handlerEntered
+    expect(app.activeCount()).toBe(1)
+
+    // Kick off stop() while handler is still running. Drain should block on inflight.
+    const stopPromise = app.stop({ drain: true, timeout: 1000 })
+
+    // Subsequent dispatches must be rejected once closing is set.
+    const rejected = await broker.dispatch({
+      topic: 'devices/demo/events',
+      payload: Buffer.from('2'),
+      clientId: 'c-2',
+    })
+    expect(rejected).toBe(false)
+    expect(handlerFinished).toBe(false)
+
+    releaseHandler()
+    await inflight
+    await stopPromise
+
+    expect(handlerFinished).toBe(true)
+    expect(app.activeCount()).toBe(0)
+  })
+
+  test('stop({ drain: true }) 超时后打印警告但仍走完关闭流程', async () => {
+    const broker = new TestBroker()
+    let releaseHandler!: () => void
+    const handlerHold = new Promise<void>((resolve) => {
+      releaseHandler = resolve
+    })
+    let handlerEntered!: () => void
+    const handlerStarted = new Promise<void>((resolve) => {
+      handlerEntered = resolve
+    })
+    const warnings: string[] = []
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map(String).join(' '))
+    }
+
+    const app = new MqttApp()
+      .use({ setup: (a) => { a.broker(broker) } })
+      .use(
+        router().topic('hang/:id', {
+          async onMessage() {
+            handlerEntered()
+            await handlerHold
+          },
+        }),
+      )
+
+    try {
+      await app.listen()
+      const inflight = broker.dispatch({
+        topic: 'hang/1',
+        payload: Buffer.from('x'),
+        clientId: 'c-1',
+      })
+      await handlerStarted
+      await app.stop({ drain: true, timeout: 50 })
+
+      expect(warnings.some((w) => w.includes('drain timed out'))).toBe(true)
+      // Handler still running after stop returned.
+      expect(app.activeCount()).toBe(1)
+
+      releaseHandler()
+      await inflight
+    } finally {
+      console.warn = originalWarn
+    }
   })
 
   test('dispatch 走严格 match，pattern 里的 + / # 不再是通配符', async () => {

@@ -58,6 +58,30 @@ router()
 - 有 `onMessage`：默认允许 client publish，默认不允许 subscribe。
 - 无 `onMessage`：默认不允许 client publish，默认允许 subscribe。
 
+## Dispatch pipeline
+
+每条入站 PUBLISH 都走同一条流水线，每个阶段都可能短路掉后面的环节；任何抛错都会被 `onError` 捕获并带上对应的 phase 标签。
+
+```mermaid
+flowchart TD
+  In([Broker 收到 PUBLISH]) --> Match{Topic<br/>是否命中?}
+  Match -- 未命中 --> Drop([Unmatched])
+  Match -- 命中 --> Pol{publish<br/>策略?}
+  Pol -- 拒绝 --> Drop
+  Pol -- 允许 --> AppMw[App middleware 链]
+  AppMw --> RouteMw[Router middleware 链]
+  RouteMw --> Val[Schema 校验]
+  Val --> Gate[并发 &amp; 超时闸门]
+  Gate --> Handler[onMessage handler]
+  Handler --> Done([Metric: result = ok])
+  Val -. 抛错 .-> Err[onError 带 phase]
+  Gate -. 抛错 .-> Err
+  Handler -. 抛错 .-> Err
+  AppMw -. 抛错 .-> Err
+  RouteMw -. 抛错 .-> Err
+  Err --> Metric([Metric: result = error])
+```
+
 ## Middleware
 
 `use()` 按注册顺序执行。

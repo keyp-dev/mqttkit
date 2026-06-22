@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { compileTopicPattern } from './matcher.js'
+import { compileTopicPattern, parseSharedSubscription } from './matcher.js'
 
 describe('compileTopicPattern.match (publish/dispatch path)', () => {
   test('literal pattern 必须完全相等', () => {
@@ -77,5 +77,28 @@ describe('compileTopicPattern.matchSubscription (subscribe path)', () => {
     const params = c.matchSubscription('users/+/notifications')
     expect(params).toEqual({})
     expect(params).not.toHaveProperty('uid')
+  })
+})
+
+describe('parseSharedSubscription (MQTT 5 $share/<group>/<filter>)', () => {
+  test('普通订阅返回 null', () => {
+    expect(parseSharedSubscription('devices/+/events')).toBeNull()
+    expect(parseSharedSubscription('$SYS/broker/clients')).toBeNull()
+  })
+
+  test('合法 $share/group/filter 拆出 group + filter', () => {
+    expect(parseSharedSubscription('$share/billing/orders/+/created')).toEqual({
+      group: 'billing',
+      topic: 'orders/+/created',
+    })
+    expect(parseSharedSubscription('$share/g1/a/#')).toEqual({ group: 'g1', topic: 'a/#' })
+  })
+
+  test('group 不能为空、不能含通配符；filter 不能为空', () => {
+    expect(parseSharedSubscription('$share//a')).toBeNull()
+    expect(parseSharedSubscription('$share/g+/a')).toBeNull()
+    expect(parseSharedSubscription('$share/g#/a')).toBeNull()
+    expect(parseSharedSubscription('$share/g/')).toBeNull()
+    expect(parseSharedSubscription('$share/g')).toBeNull()
   })
 })
