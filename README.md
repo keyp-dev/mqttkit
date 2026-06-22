@@ -6,21 +6,17 @@ Build MQTT applications with an Elysia-like API: compose broker adapters, ordere
 
 mqttkit does not reimplement the MQTT protocol. A broker such as Aedes owns CONNECT, SUBSCRIBE, PUBLISH, QoS, retain, sessions, persistence, and MQTT-over-WebSocket. mqttkit adds an application framework layer on top.
 
+Full documentation: **<https://mqttkit.keyp.dev>** ([简体中文](https://mqttkit.keyp.dev/zh/))
+
 ## Features
 
 - Ordered `use()` middleware for auth, logging, audit, validation, and interception.
-- `router().topic()` declares MQTT topic routes, publish policy, and subscribe policy.
-- `ctx.params` extracts topic params such as `devices/:uid/events`.
-- `ctx.body` carries the validated payload — any [Standard Schema](https://standardschema.dev/) validator (zod, valibot, arktype, …) works, with full type inference. Use `@mqttkit/typebox` / `@mqttkit/zod` for raw TypeBox or for attaching JSON Schema.
-- `ctx.services` injects Kafka, Redis, database, audit, or domain services.
-- `app.request()` does MQTT 5 RPC over `responseTopic` + `correlationData`; `ctx.reply()` answers on the device side.
-- `app.onError()` (and per-route `onError`) capture validation, handler, policy, middleware and publish failures with a structured `phase`.
-- `app.on()` observes broker lifecycle events such as client, publish, subscribe, ack, and errors.
-- `app.publish()` lets services, workers, and consumers push messages to MQTT clients through the broker.
-- `@mqttkit/core/testing` ships an in-memory `TestBroker` so apps can be unit-tested without spawning aedes.
-- `@mqttkit/aedes` provides TCP MQTT and MQTT-over-WebSocket support through Aedes (with MQTT 5 properties forwarded for RPC).
-- `@mqttkit/asyncapi` generates AsyncAPI 3.0 documentation from routes and serves a browsable docs page.
-- Built for Bun and TypeScript.
+- `router().topic()` declares MQTT topic routes with publish / subscribe policies.
+- Topic params (`devices/:uid/events`), payload validation via any [Standard Schema](https://standardschema.dev/) validator, and injected services on `ctx`.
+- MQTT 5 RPC with `app.request()` and `ctx.reply()`.
+- `app.on()` observes broker lifecycle events; `app.publish()` lets workers push messages.
+- Adapters: `@mqttkit/aedes` (TCP + WebSocket) and `@mqttkit/asyncapi` (AsyncAPI 3.0 docs).
+- In-memory `TestBroker` for unit tests. Built for Bun and TypeScript.
 
 ## Installation
 
@@ -28,26 +24,13 @@ mqttkit does not reimplement the MQTT protocol. A broker such as Aedes owns CONN
 bun add @mqttkit/core @mqttkit/aedes aedes
 ```
 
-Install only `@mqttkit/core` if you only need the core types, router, or a custom broker adapter.
-
 ## Quick Start
 
 ```ts
 import { aedes } from '@mqttkit/aedes'
 import { MqttApp, router } from '@mqttkit/core'
 
-type Services = {
-  audit: {
-    log(event: string, fields: Record<string, unknown>): Promise<void>
-  }
-}
-
-const app = new MqttApp<{ principal?: { uid: string }; services: Services }>()
-  .decorate('audit', {
-    async log(event, fields) {
-      console.log(event, fields)
-    },
-  })
+const app = new MqttApp<{ principal?: { uid: string } }>()
   .use(
     aedes({
       tcp: { port: 1883 },
@@ -58,15 +41,8 @@ const app = new MqttApp<{ principal?: { uid: string }; services: Services }>()
       },
     }),
   )
-  .use(async (ctx, next) => {
-    await ctx.services.audit.log('mqtt.message', {
-      clientId: ctx.clientId,
-      topic: ctx.topic,
-    })
-    await next()
-  })
   .use(
-    router<{ principal?: { uid: string }; services: Services }>()
+    router<{ principal?: { uid: string } }>()
       .topic('devices/:uid/events', {
         publish: ({ params, principal }) => params.uid === principal?.uid,
         async onMessage(ctx) {
@@ -81,228 +57,41 @@ const app = new MqttApp<{ principal?: { uid: string }; services: Services }>()
 await app.listen()
 ```
 
-Clients connect with standard MQTT TCP or MQTT-over-WebSocket:
+## Schema Validation
+
+`topic({ schema })` accepts any [Standard Schema](https://standardschema.dev/) validator (zod, valibot, arktype, …). The validated payload is exposed on `ctx.body` with full type inference.
 
 ```ts
-import mqtt from 'mqtt'
+import { z } from 'zod'
 
-const client = mqtt.connect('ws://localhost:8888/mqtt', {
-  username: 'demo',
-})
-
-client.subscribe('server/demo/echo')
-client.publish('devices/demo/events', JSON.stringify({ temperature: 22 }), { qos: 0 })
-```
-
-## Router
-
-MQTT has topics, not HTTP methods. mqttkit uses `topic(pattern, config)` to declare a route, publish policy, subscribe policy, and optional inbound message handler.
-
-```ts
-router()
-  .topic('devices/:uid/events', {
-    publish: ({ params, principal }) => params.uid === principal?.uid,
-    subscribe: false,
-    async onMessage(ctx) {
-      console.log(ctx.params.uid, ctx.payload.toString())
-    },
-  })
-  .topic('server/:uid/commands', {
-    publish: false,
-    subscribe: ({ params, principal }) => params.uid === principal?.uid,
-  })
-```
-
-Default policies:
-
-- A topic with `onMessage` defaults to `publish: true` and `subscribe: false`.
-- A topic without `onMessage` defaults to `publish: false` and `subscribe: true`.
-
-## Middleware
-
-`use()` runs in registration order. If middleware does not call `next()`, the remaining middleware and route handler do not run.
-
-```ts
-const app = new MqttApp()
-  .use(async (ctx, next) => {
-    console.log('[mqtt]', ctx.clientId, ctx.topic)
-    await next()
-  })
-  .use(
-    router()
-      .use(async (ctx, next) => {
-        if (ctx.params.uid === 'blocked') return
-        await next()
-      })
-      .topic('devices/:uid/events', {
-        onMessage(ctx) {
-          console.log(ctx.payload.toString())
-        },
-      }),
-  )
-```
-
-Pipeline:
-
-```text
-app middleware -> route middleware -> onMessage
-```
-
-## Events
-
-`app.on()` receives broker lifecycle events. The Aedes adapter currently forwards:
-
-```ts
-import type { MqttEventName } from '@mqttkit/core'
-
-const eventNames: MqttEventName[] = [
-  'client',
-  'clientReady',
-  'clientDisconnect',
-  'keepaliveTimeout',
-  'clientError',
-  'connectionError',
-  'connackSent',
-  'ping',
-  'publish',
-  'ack',
-  'subscribe',
-  'unsubscribe',
-]
-
-for (const eventName of eventNames) {
-  app.on(eventName, (event) => {
-    console.log(event.type, event.clientId, event.topic)
-  })
-}
-```
-
-ACK is produced by the broker according to MQTT packet lifecycle. mqttkit does not define a custom JSON ack.
-
-## Service Push
-
-Any external service, timer, worker, queue consumer, or Kafka consumer can call `app.publish()` to send messages into the broker and let the broker deliver them to subscribed MQTT clients.
-
-```text
-external service / worker / consumer
-  -> app.publish(topic, payload, options)
-  -> @mqttkit/aedes adapter
-  -> Aedes broker
-  -> subscribed MQTT clients
-```
-
-Declare a server-owned topic that clients may subscribe to but may not publish to:
-
-```ts
-const app = new MqttApp()
-  .use(aedes({ tcp: { port: 1886 } }))
-  .use(
-    router().topic('users/:uid/notifications', {
-      subscribe: true,
-      publish: false,
-    }),
-  )
-
-billing.onInvoicePaid(async (event) => {
-  await app.publish(`users/${event.uid}/notifications`, event.payload, { qos: 1 })
+router().topic('devices/:uid/events', {
+  schema: { body: z.object({ temperature: z.number() }) },
+  async onMessage(ctx) {
+    ctx.body.temperature // typed as number
+  },
 })
 ```
 
-## Kafka Bridge
+Use [`@mqttkit/typebox`](https://mqttkit.keyp.dev/schema) for raw TypeBox or [`@mqttkit/zod`](https://mqttkit.keyp.dev/schema) to attach a JSON Schema so `@mqttkit/asyncapi` can emit the full payload.
 
-Kafka, databases, and other services are injected with `decorate()`. MQTT -> Kafka happens inside `onMessage`; Kafka -> MQTT happens when a consumer calls `app.publish()`.
+See the [Getting Started guide](https://mqttkit.keyp.dev/getting-started) for routers, middleware, events, RPC, Kafka bridging, and more.
 
-```ts
-type Kafka = {
-  produce(topic: string, value: Buffer, key: string): Promise<void>
-  onCommands(handler: (message: { key: string; value: Buffer }) => Promise<void>): void
-}
+## Packages
 
-const app = new MqttApp<{ services: { kafka: Kafka } }>()
-  .decorate('kafka', kafka)
-  .use(aedes({ tcp: { port: 1883 } }))
-  .use(
-    router<{ services: { kafka: Kafka } }>()
-      .topic('devices/:uid/events', {
-        async onMessage(ctx) {
-          await ctx.services.kafka.produce('device.events', ctx.payload, ctx.params.uid)
-        },
-      })
-      .topic('server/:uid/commands'),
-  )
-
-kafka.onCommands(async (message) => {
-  await app.publish(`server/${message.key}/commands`, message.value, { qos: 1 })
-})
-```
-
-The client only needs a normal MQTT subscription:
-
-```ts
-const client = mqtt.connect('mqtt://localhost:1885')
-client.subscribe('server/demo/commands', { qos: 1 })
-client.on('message', (topic, payload) => {
-  console.log(topic, payload.toString())
-})
-```
-
-## Aedes Integration
-
-`@mqttkit/aedes` supports:
-
-- Creating an Aedes instance for mqttkit.
-- Using an externally created Aedes instance.
-- Starting a TCP MQTT server.
-- Starting a standard MQTT-over-WebSocket server.
-- Passing Aedes `persistence` through.
-- Forwarding Aedes lifecycle events to `app.on()`.
-- Returning `principal` from `authenticate` and injecting it into policies and handler context.
-- Delegating publish / subscribe authorization to mqttkit route policies.
-
-```ts
-import { aedes } from '@mqttkit/aedes'
-
-new MqttApp()
-  .use(
-    aedes({
-      tcp: { port: 1883 },
-      ws: { port: 8888, path: '/mqtt' },
-      authenticate({ username }) {
-        if (!username) return false
-        return { uid: username }
-      },
-    }),
-  )
-```
-
-Use Aedes persistence adapters for offline queues, retain, QoS sessions, and durable storage. mqttkit only owns the application layer.
+- `@mqttkit/core`: application, router, middleware, context, schema validation, RPC, event types, broker adapter interface, and `@mqttkit/core/testing` in-memory broker.
+- `@mqttkit/aedes`: Aedes adapter for TCP MQTT and MQTT-over-WebSocket (forwards MQTT 5 properties for RPC).
+- `@mqttkit/asyncapi`: AsyncAPI 3.0 generator and HTTP plugin for browsable docs.
+- `@mqttkit/typebox`: TypeBox schema provider — register once, then pass raw `Type.X(...)` schemas directly.
+- `@mqttkit/zod`: zod helper that attaches a JSON Schema representation so AsyncAPI documents the full payload.
 
 ## Examples
 
-- `examples/aedes-basic`: TCP broker, authentication, middleware, topic routes, and server-side publish.
-- `examples/aedes-ws`: standard MQTT-over-WebSocket; mqtt.js connects to `ws://localhost:8888/mqtt`.
-- `examples/events`: broker lifecycle events.
-- `examples/service-push`: external service calls `app.publish()`, then Aedes delivers to subscribed MQTT clients.
-- `examples/kafka-bridge`: MQTT messages go to Kafka, and Kafka consumer messages are forwarded to MQTT clients.
-- `examples/schema-validation`: payload schemas with zod, TypeBox, and coexistence between the two.
-- `examples/rpc`: MQTT 5 RPC round-trip with `app.request()` and `ctx.reply()`.
-- `examples/asyncapi-docs`: AsyncAPI documentation served from `@mqttkit/asyncapi` (standalone HTTP). `dev:zod` variant shows zod + `jsonify` in the doc.
-- `examples/asyncapi-elysia`: share a single Elysia port for both AsyncAPI docs and MQTT-over-WebSocket (aedes ws attached to the same `http.Server`).
-
-Run an example:
+Runnable examples under [`examples/`](./examples) cover the basic TCP / WebSocket broker, lifecycle events, service push, Kafka bridge, schema validation, MQTT 5 RPC, and AsyncAPI docs (standalone HTTP or shared Elysia port).
 
 ```bash
 bun install
 bun run --cwd examples/aedes-basic dev
 ```
-
-## Documentation
-
-- [Getting Started](docs/getting-started.md) / [简体中文](docs/zh/getting-started.md)
-- [Aedes adapter](docs/aedes.md) / [简体中文](docs/zh/aedes.md)
-- [Events](docs/events.md) / [简体中文](docs/zh/events.md)
-- [Service Push](docs/service-push.md) / [简体中文](docs/zh/service-push.md)
-- [Kafka bridge](docs/kafka-bridge.md) / [简体中文](docs/zh/kafka-bridge.md)
 
 ## Development
 
@@ -311,11 +100,3 @@ bun run test
 bun run typecheck
 bun run build
 ```
-
-## Packages
-
-- `@mqttkit/core`: core application, router, middleware, context, schema validation, RPC, event types, broker adapter interface, and `@mqttkit/core/testing` in-memory broker.
-- `@mqttkit/aedes`: Aedes adapter for TCP MQTT and MQTT-over-WebSocket (forwards MQTT 5 properties for RPC).
-- `@mqttkit/asyncapi`: AsyncAPI 3.0 generator and HTTP plugin for browsable docs.
-- `@mqttkit/typebox`: TypeBox schema provider — register once, then pass raw `Type.X(...)` schemas directly.
-- `@mqttkit/zod`: zod helper that attaches a JSON Schema representation so AsyncAPI documents the full payload.
