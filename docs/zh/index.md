@@ -11,7 +11,7 @@ hero:
       link: /zh/getting-started
     - theme: alt
       text: 在 GitHub 查看
-      link: https://github.com/keyp/mqttkit
+      link: https://github.com/keyp-dev/mqttkit
 
 features:
   - title: Routing 与 Middleware

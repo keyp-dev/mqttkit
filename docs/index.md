@@ -11,7 +11,7 @@ hero:
       link: /getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/keyp/mqttkit
+      link: https://github.com/keyp-dev/mqttkit
 
 features:
   - title: Routing & Middleware

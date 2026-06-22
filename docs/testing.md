@@ -1,7 +1,7 @@
 # Testing
 
 ::: tip Coming soon
-This page is a placeholder while the full guide is written. See the [`@mqttkit/core` README — Testing](https://github.com/keyp/mqttkit/blob/main/packages/core/README.md#testing) for current reference material.
+This page is a placeholder while the full guide is written. See the [`@mqttkit/core` README — Testing](https://github.com/keyp-dev/mqttkit/blob/main/packages/core/README.md#testing) for current reference material.
 :::
 
 `@mqttkit/core/testing` ships an in-memory `TestBroker` and `createTestApp()` helper so applications can be unit-tested without spawning an actual MQTT broker. The test broker exposes `dispatch()` to inject messages and `onPublish` to assert server-side publishes — no network, no aedes process.

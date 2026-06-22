@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
 
-const GITHUB_REPO = 'https://github.com/keyp/mqttkit'
+const GITHUB_REPO = 'https://github.com/keyp-dev/mqttkit'
 
 // Runs in <head> before body parsing so the browser starts navigating
 // before the English landing renders. Only fires on the landing path.
