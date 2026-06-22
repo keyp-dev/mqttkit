@@ -1,7 +1,5 @@
 # Events
 
-[简体中文](events.zh-CN.md)
-
 Use `app.on()` to listen to broker lifecycle events. With `@mqttkit/aedes`, events come from Aedes.
 
 ## Supported Events

@@ -3,3 +3,5 @@ dist/
 .vite/
 .DS_Store
 legacy
+docs/.vitepress/dist
+docs/.vitepress/cache

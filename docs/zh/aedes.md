@@ -1,7 +1,5 @@
 # Aedes Adapter
 
-[English](aedes.md)
-
 `@mqttkit/aedes` 把 Aedes broker 接入 `MqttApp`。Aedes 继续负责 MQTT 协议语义，mqttkit 负责应用层路由、middleware、策略、服务注入和事件监听。
 
 ## TCP MQTT

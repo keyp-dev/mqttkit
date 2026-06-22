@@ -1,7 +1,5 @@
 # 事件
 
-[English](events.md)
-
 `app.on()` 用于监听 broker lifecycle event。使用 `@mqttkit/aedes` 时，事件来自 Aedes。
 
 ## 支持的事件

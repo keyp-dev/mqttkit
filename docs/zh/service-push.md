@@ -1,7 +1,5 @@
 # Service Push
 
-[English](service-push.md)
-
 外部服务、定时任务、队列 consumer、Kafka consumer 都可以通过 `app.publish()` 把消息送进 MQTT broker，再由 broker 投递给已经订阅对应 topic 的 MQTT client。
 
 核心线路：

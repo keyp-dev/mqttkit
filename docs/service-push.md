@@ -1,7 +1,5 @@
 # Service Push
 
-[简体中文](service-push.zh-CN.md)
-
 External services, scheduled jobs, queue consumers, and Kafka consumers can call `app.publish()` to send messages into the MQTT broker. The broker then delivers those messages to MQTT clients that already subscribed to the target topic.
 
 Core path:

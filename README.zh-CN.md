@@ -298,11 +298,11 @@ bun run --cwd examples/aedes-basic dev
 
 ## 文档
 
-- [快速开始](docs/getting-started.zh-CN.md) / [English](docs/getting-started.md)
-- [Aedes adapter](docs/aedes.zh-CN.md) / [English](docs/aedes.md)
-- [事件监听](docs/events.zh-CN.md) / [English](docs/events.md)
-- [Service Push](docs/service-push.zh-CN.md) / [English](docs/service-push.md)
-- [Kafka bridge](docs/kafka-bridge.zh-CN.md) / [English](docs/kafka-bridge.md)
+- [快速开始](docs/zh/getting-started.md) / [English](docs/getting-started.md)
+- [Aedes adapter](docs/zh/aedes.md) / [English](docs/aedes.md)
+- [事件监听](docs/zh/events.md) / [English](docs/events.md)
+- [Service Push](docs/zh/service-push.md) / [English](docs/service-push.md)
+- [Kafka bridge](docs/zh/kafka-bridge.md) / [English](docs/kafka-bridge.md)
 
 ## 开发
 

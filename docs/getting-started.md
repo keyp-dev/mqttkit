@@ -1,7 +1,5 @@
 # Getting Started
 
-[简体中文](getting-started.zh-CN.md)
-
 mqttkit organizes MQTT applications with `MqttApp`, ordered `use()` middleware, and `router().topic()`. Broker adapters own connections, QoS, retain, sessions, and persistence.
 
 ## Install

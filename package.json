@@ -19,12 +19,16 @@
     "publish:aedes": "node scripts/publish.mjs aedes",
     "publish:asyncapi": "node scripts/publish.mjs asyncapi",
     "publish:typebox": "node scripts/publish.mjs typebox",
-    "publish:zod": "node scripts/publish.mjs zod"
+    "publish:zod": "node scripts/publish.mjs zod",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "bun-types": "^1.3.4",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.4"
   }
 }

@@ -1,7 +1,5 @@
 # Kafka Bridge
 
-[English](kafka-bridge.md)
-
 mqttkit 不内置 Kafka client。推荐把 Kafka producer / consumer 作为业务服务注入，然后用 MQTT topic route 连接两边。
 
 ## MQTT -> Kafka

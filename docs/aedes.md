@@ -1,7 +1,5 @@
 # Aedes Adapter
 
-[简体中文](aedes.zh-CN.md)
-
 `@mqttkit/aedes` connects an Aedes broker to `MqttApp`. Aedes keeps owning MQTT protocol behavior, while mqttkit owns application routes, middleware, policies, service injection, and events.
 
 ## TCP MQTT

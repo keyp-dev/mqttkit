@@ -1,7 +1,5 @@
 # Kafka Bridge
 
-[简体中文](kafka-bridge.zh-CN.md)
-
 mqttkit does not include a Kafka client. The recommended approach is to inject Kafka producers and consumers as business services, then connect both sides with MQTT topic routes.
 
 ## MQTT -> Kafka

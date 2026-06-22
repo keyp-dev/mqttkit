@@ -1,7 +1,5 @@
 # 快速开始
 
-[English](getting-started.md)
-
 mqttkit 用 `MqttApp`、有序 `use()` middleware 和 `router().topic()` 组织 MQTT 应用。协议连接、QoS、retain、session 和 persistence 由 broker adapter 负责。
 
 ## 安装
