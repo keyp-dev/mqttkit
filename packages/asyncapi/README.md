@@ -52,6 +52,31 @@ await app.listen()
 // http://localhost:9000/asyncapi.yaml
 ```
 
+## Schema Integration
+
+The plugin reads each route's `schema` and emits it as `messages.<id>.payload`. Behavior depends on the schema type:
+
+| Schema kind                                | Result in the document                                |
+| ------------------------------------------ | ----------------------------------------------------- |
+| Plain JSON Schema object                   | Used as-is                                            |
+| TypeBox `Type.X(...)` (raw)                | Used as-is (TypeBox schemas *are* JSON Schema)        |
+| Standard Schema with `~jsonSchema` attached | The attached JSON Schema is used                      |
+| Standard Schema without JSON Schema        | Placeholder: `{ description: 'Validated by <vendor>' }` |
+
+To get the full JSON Schema in the doc from a zod schema, use `@mqttkit/zod`'s `jsonify()`:
+
+```ts
+import { jsonify } from '@mqttkit/zod'
+import { z } from 'zod'
+
+router().topic('users/:id', {
+  schema: jsonify(z.object({ name: z.string(), age: z.number().int() })),
+  /* ... */
+})
+```
+
+TypeBox just works — register `typeboxProvider` from `@mqttkit/typebox` for runtime validation and the doc will already contain the full schema.
+
 ## Route Annotations
 
 The plugin reads the following `TopicConfig` fields:

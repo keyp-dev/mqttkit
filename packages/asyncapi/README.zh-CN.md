@@ -50,6 +50,31 @@ await app.listen()
 // http://localhost:9000/asyncapi.yaml
 ```
 
+## Schema 集成
+
+插件读取每个路由的 `schema` 并作为 `messages.<id>.payload` 输出。根据 schema 类型行为不同：
+
+| schema 类型                                  | 文档里的结果                                          |
+| -------------------------------------------- | ----------------------------------------------------- |
+| 普通 JSON Schema 对象                        | 原样使用                                              |
+| TypeBox `Type.X(...)` (原始)                 | 原样使用（TypeBox schema 本身就是 JSON Schema）       |
+| 带 `~jsonSchema` 字段的 Standard Schema      | 使用挂上的 JSON Schema                                |
+| 没挂 JSON Schema 的 Standard Schema          | 占位：`{ description: 'Validated by <vendor>' }`      |
+
+要让 zod schema 在文档里输出完整 JSON Schema，用 `@mqttkit/zod` 的 `jsonify()`：
+
+```ts
+import { jsonify } from '@mqttkit/zod'
+import { z } from 'zod'
+
+router().topic('users/:id', {
+  schema: jsonify(z.object({ name: z.string(), age: z.number().int() })),
+  /* ... */
+})
+```
+
+TypeBox 不需要额外步骤——通过 `@mqttkit/typebox` 注册 `typeboxProvider` 做运行时校验，文档里自动就有完整 schema。
+
 ## 路由注解约定
 
 插件读取 `TopicConfig` 的以下字段：

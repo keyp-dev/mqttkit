@@ -4,7 +4,14 @@ import { createServer as createNetServer } from 'node:net'
 import type { Server as NetServer } from 'node:net'
 import { createBroker } from 'aedes'
 import type { Client, PublishPacket, Subscription } from 'aedes'
-import type { BrokerStartOptions, MqttBrokerAdapter, MqttPayload, PublishOptions, PublishResult } from '@mqttkit/core'
+import type {
+  BrokerStartOptions,
+  MqttBrokerAdapter,
+  MqttPayload,
+  MqttPublishProperties,
+  PublishOptions,
+  PublishResult,
+} from '@mqttkit/core'
 import { toPayloadBuffer } from '@mqttkit/core'
 import type { AedesAdapterOptions, AedesAdapterTcpOptions, AedesAdapterWsOptions, AedesInstance } from './types.js'
 import { attachWebSocketServer } from './ws.js'
@@ -56,6 +63,11 @@ export class AedesBrokerAdapter<TPrincipal = unknown> implements MqttBrokerAdapt
       qos: options.qos ?? 0,
       retain: options.retain ?? false,
       dup: false,
+    }
+
+    const properties = toAedesProperties(options.properties)
+    if (properties) {
+      ;(packet as PublishPacket & { properties: typeof properties }).properties = properties
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -259,6 +271,37 @@ export class AedesBrokerAdapter<TPrincipal = unknown> implements MqttBrokerAdapt
       this.broker.close(resolve)
     })
   }
+}
+
+type AedesPublishProperties = {
+  payloadFormatIndicator?: boolean
+  messageExpiryInterval?: number
+  responseTopic?: string
+  correlationData?: Buffer
+  userProperties?: Record<string, string | string[]>
+  contentType?: string
+}
+
+function toAedesProperties(properties: MqttPublishProperties | undefined): AedesPublishProperties | undefined {
+  if (!properties) return undefined
+  const out: AedesPublishProperties = {}
+  if (properties.responseTopic !== undefined) out.responseTopic = properties.responseTopic
+  if (properties.contentType !== undefined) out.contentType = properties.contentType
+  if (properties.messageExpiryInterval !== undefined) out.messageExpiryInterval = properties.messageExpiryInterval
+  if (properties.userProperties !== undefined) out.userProperties = properties.userProperties
+  if (properties.payloadFormatIndicator !== undefined) {
+    out.payloadFormatIndicator = properties.payloadFormatIndicator === 1
+  }
+  if (properties.correlationData !== undefined) {
+    out.correlationData = toBuffer(properties.correlationData)
+  }
+  return Object.keys(out).length === 0 ? undefined : out
+}
+
+function toBuffer(value: Buffer | Uint8Array | string): Buffer {
+  if (Buffer.isBuffer(value)) return value
+  if (typeof value === 'string') return Buffer.from(value, 'utf8')
+  return Buffer.from(value)
 }
 
 function clientEvent<TPrincipal>(client: Client): { clientId: string; principal?: TPrincipal } {

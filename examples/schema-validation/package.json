@@ -1,15 +1,16 @@
 {
-  "name": "@mqttkit/example-asyncapi-docs",
+  "name": "@mqttkit/example-schema-validation",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run src/index.ts",
+    "dev": "bun run src/zod.ts",
     "dev:zod": "bun run src/zod.ts",
+    "dev:typebox": "bun run src/typebox.ts",
+    "dev:manual": "bun run src/manual.ts",
+    "dev:coexist": "bun run src/coexist.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mqttkit/aedes": "workspace:*",
-    "@mqttkit/asyncapi": "workspace:*",
     "@mqttkit/core": "workspace:*",
     "@mqttkit/typebox": "workspace:*",
     "@mqttkit/zod": "workspace:*",

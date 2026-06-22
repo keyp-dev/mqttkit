@@ -1,37 +1,50 @@
+/**
+ * mqttkit + TypeBox + AsyncAPI 一体化示例。
+ *
+ * **核心模式**：一份 TypeBox schema 同时承担三件事 ——
+ *   1) 运行时校验（`app.addSchemaProvider(typeboxProvider)`）
+ *   2) `ctx.body` 静态类型推断（`Static<T>`，零导出）
+ *   3) AsyncAPI 文档 payload（TypeBox 本身就是 JSON Schema，无需转换）
+ *
+ * 这是 mqttkit 推荐的 schema 写法。如果你坚持用 zod 做运行时校验，
+ * 需要额外把 schema 转 JSON Schema 才能进入 AsyncAPI 文档；参见
+ * examples/schema-validation/src/zod.ts。
+ *
+ * 启动后：
+ *   - MQTT:           mqtt://localhost:1883
+ *   - AsyncAPI JSON:  http://localhost:9000/asyncapi.json
+ *   - AsyncAPI YAML:  http://localhost:9000/asyncapi.yaml
+ *   - 渲染文档:        http://localhost:9000/docs
+ */
 import { aedes } from '@mqttkit/aedes'
 import { asyncapi } from '@mqttkit/asyncapi'
 import { MqttApp, router } from '@mqttkit/core'
+import { typeboxProvider } from '@mqttkit/typebox'
+import { Type } from '@sinclair/typebox'
 
 type Principal = { uid: string }
 type State = { principal?: Principal }
 
-const deviceEventSchema = {
-  type: 'object',
-  required: ['temperature'],
-  properties: {
-    temperature: { type: 'number', description: 'Celsius reading' },
-    humidity: { type: 'number' },
-    ts: { type: 'integer', description: 'Unix ms' },
+const deviceEventSchema = Type.Object(
+  {
+    temperature: Type.Number({ description: 'Celsius reading' }),
+    humidity: Type.Optional(Type.Number()),
+    ts: Type.Optional(Type.Integer({ description: 'Unix ms' })),
   },
-}
+  { description: 'Device telemetry payload' },
+)
 
-const notificationSchema = {
-  type: 'object',
-  required: ['kind', 'body'],
-  properties: {
-    kind: { type: 'string', enum: ['invoice', 'system', 'chat'] },
-    body: { type: 'string' },
-  },
-}
+const notificationSchema = Type.Object({
+  kind: Type.Union([Type.Literal('invoice'), Type.Literal('system'), Type.Literal('chat')]),
+  body: Type.String(),
+})
 
 const app = new MqttApp<State>()
+  .addSchemaProvider(typeboxProvider)
   .use(
     aedes({
       tcp: { port: 1883 },
-      authenticate: ({ username }) => {
-        if (!username) return false
-        return { uid: username }
-      },
+      authenticate: ({ username }) => (username ? { uid: username } : false),
     }),
   )
   .use(
@@ -41,6 +54,8 @@ const app = new MqttApp<State>()
         qos: 1,
         schema: deviceEventSchema,
         async onMessage(ctx) {
+          // ctx.body 自动推断为 { temperature: number; humidity?: number; ts?: number }
+          console.log(`[device ${ctx.params.uid}] ${ctx.body.temperature}°C`)
           await ctx.publish(`server/${ctx.params.uid}/echo`, ctx.payload, { qos: 0 })
         },
         meta: {
@@ -77,7 +92,7 @@ const app = new MqttApp<State>()
       info: {
         title: 'mqttkit demo',
         version: '0.0.1',
-        description: 'AsyncAPI generated from mqttkit router metadata.',
+        description: 'AsyncAPI generated from mqttkit router metadata, schemas powered by TypeBox.',
       },
       servers: {
         tcp: { host: 'localhost:1883', protocol: 'mqtt', description: 'Aedes TCP broker' },

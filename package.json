@@ -10,12 +10,16 @@
   ],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "test": "bun test packages/core/src/matcher.test.ts packages/core/src/app.test.ts packages/aedes/src/aedes-adapter.test.ts",
+    "test": "bun test packages/core/src/matcher.test.ts packages/core/src/pattern.test.ts packages/core/src/schema.test.ts packages/core/src/error.test.ts packages/core/src/rpc.test.ts packages/core/src/app.test.ts packages/core/src/testing.test.ts packages/aedes/src/aedes-adapter.test.ts packages/typebox/src/typebox.test.ts packages/zod/src/zod.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublish:check": "bun run test && bun run typecheck && bun run build",
     "publish:dry-run": "node scripts/publish.mjs --dry-run",
     "publish:packages": "node scripts/publish.mjs",
-    "publish:asyncapi": "node scripts/publish.mjs asyncapi"
+    "publish:core": "node scripts/publish.mjs core",
+    "publish:aedes": "node scripts/publish.mjs aedes",
+    "publish:asyncapi": "node scripts/publish.mjs asyncapi",
+    "publish:typebox": "node scripts/publish.mjs typebox",
+    "publish:zod": "node scripts/publish.mjs zod"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

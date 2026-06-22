@@ -11,10 +11,13 @@ const positional = argv.filter((arg) => !arg.startsWith('--'))
 const dryRun = flags.has('--dry-run')
 const skipChecks = flags.has('--skip-checks')
 
+// Order is dependency-safe: core ships before anything that imports it.
 const allPackages = [
   'packages/core',
   'packages/aedes',
   'packages/asyncapi',
+  'packages/typebox',
+  'packages/zod',
 ]
 
 const selected = resolveSelection(allPackages, positional)

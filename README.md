@@ -11,10 +11,14 @@ mqttkit does not reimplement the MQTT protocol. A broker such as Aedes owns CONN
 - Ordered `use()` middleware for auth, logging, audit, validation, and interception.
 - `router().topic()` declares MQTT topic routes, publish policy, and subscribe policy.
 - `ctx.params` extracts topic params such as `devices/:uid/events`.
+- `ctx.body` carries the validated payload — any [Standard Schema](https://standardschema.dev/) validator (zod, valibot, arktype, …) works, with full type inference. Use `@mqttkit/typebox` / `@mqttkit/zod` for raw TypeBox or for attaching JSON Schema.
 - `ctx.services` injects Kafka, Redis, database, audit, or domain services.
+- `app.request()` does MQTT 5 RPC over `responseTopic` + `correlationData`; `ctx.reply()` answers on the device side.
+- `app.onError()` (and per-route `onError`) capture validation, handler, policy, middleware and publish failures with a structured `phase`.
 - `app.on()` observes broker lifecycle events such as client, publish, subscribe, ack, and errors.
 - `app.publish()` lets services, workers, and consumers push messages to MQTT clients through the broker.
-- `@mqttkit/aedes` provides TCP MQTT and MQTT-over-WebSocket support through Aedes.
+- `@mqttkit/core/testing` ships an in-memory `TestBroker` so apps can be unit-tested without spawning aedes.
+- `@mqttkit/aedes` provides TCP MQTT and MQTT-over-WebSocket support through Aedes (with MQTT 5 properties forwarded for RPC).
 - `@mqttkit/asyncapi` generates AsyncAPI 3.0 documentation from routes and serves a browsable docs page.
 - Built for Bun and TypeScript.
 
@@ -280,7 +284,9 @@ Use Aedes persistence adapters for offline queues, retain, QoS sessions, and dur
 - `examples/events`: broker lifecycle events.
 - `examples/service-push`: external service calls `app.publish()`, then Aedes delivers to subscribed MQTT clients.
 - `examples/kafka-bridge`: MQTT messages go to Kafka, and Kafka consumer messages are forwarded to MQTT clients.
-- `examples/asyncapi-docs`: AsyncAPI documentation served from `@mqttkit/asyncapi` (standalone HTTP).
+- `examples/schema-validation`: payload schemas with zod, TypeBox, and coexistence between the two.
+- `examples/rpc`: MQTT 5 RPC round-trip with `app.request()` and `ctx.reply()`.
+- `examples/asyncapi-docs`: AsyncAPI documentation served from `@mqttkit/asyncapi` (standalone HTTP). `dev:zod` variant shows zod + `jsonify` in the doc.
 - `examples/asyncapi-elysia`: share a single Elysia port for both AsyncAPI docs and MQTT-over-WebSocket (aedes ws attached to the same `http.Server`).
 
 Run an example:
@@ -308,6 +314,8 @@ bun run build
 
 ## Packages
 
-- `@mqttkit/core`: core application, router, middleware, context, event types, and broker adapter interface.
-- `@mqttkit/aedes`: Aedes adapter for TCP MQTT and MQTT-over-WebSocket.
+- `@mqttkit/core`: core application, router, middleware, context, schema validation, RPC, event types, broker adapter interface, and `@mqttkit/core/testing` in-memory broker.
+- `@mqttkit/aedes`: Aedes adapter for TCP MQTT and MQTT-over-WebSocket (forwards MQTT 5 properties for RPC).
 - `@mqttkit/asyncapi`: AsyncAPI 3.0 generator and HTTP plugin for browsable docs.
+- `@mqttkit/typebox`: TypeBox schema provider — register once, then pass raw `Type.X(...)` schemas directly.
+- `@mqttkit/zod`: zod helper that attaches a JSON Schema representation so AsyncAPI documents the full payload.

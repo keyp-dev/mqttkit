@@ -1,25 +1,88 @@
-import type { MqttAppState, MqttHandler, MqttMiddleware, MqttTopicPolicy } from './context.js'
+import type {
+  MqttAppState,
+  MqttErrorHandler,
+  MqttHandler,
+  MqttMiddleware,
+  MqttTopicPolicy,
+} from './context.js'
 import { compileTopicPattern, joinTopic } from './matcher.js'
+import type { InferParams } from './pattern.js'
 import type { MqttPlugin } from './plugin.js'
+import type { StandardSchemaV1 } from './standard-schema.js'
 
-export type TopicConfig<TState extends MqttAppState = MqttAppState> = {
-  publish?: MqttTopicPolicy<TState['principal']>
-  subscribe?: MqttTopicPolicy<TState['principal']>
-  onMessage?: MqttHandler<TState>
+/**
+ * Type-only extension registry. Third-party schema adapter packages augment
+ * this interface so that raw schemas of their kind (e.g. raw typebox `TSchema`
+ * objects) get correct `ctx.body` inference without `@mqttkit/core` having to
+ * depend on those libraries.
+ *
+ * @example
+ * ```ts
+ * // @mqttkit/typebox
+ * import type { TSchema, Static } from '@sinclair/typebox'
+ * declare module '@mqttkit/core' {
+ *   interface MqttkitInferExtensions<T> {
+ *     typebox: T extends TSchema ? Static<T> : never
+ *   }
+ * }
+ * ```
+ */
+// biome-ignore lint/correctness/noUnusedVariables: extension point — T is used by augmentations
+export interface MqttkitInferExtensions<T> {}
+
+type InferExtensionsLookup<T> = MqttkitInferExtensions<T>[keyof MqttkitInferExtensions<T>]
+
+export type ValidateMode = 'inbound' | 'outbound' | 'both' | false
+
+export type TopicConfig<
+  TState extends MqttAppState = MqttAppState,
+  TSchema = unknown,
+  TParams extends Record<string, string> = Record<string, string>,
+> = {
+  publish?: MqttTopicPolicy<TState['principal'], TParams>
+  subscribe?: MqttTopicPolicy<TState['principal'], TParams>
+  onMessage?: MqttHandler<TState, TParams, InferBody<TSchema>>
   qos?: 0 | 1 | 2
   retain?: boolean
-  schema?: unknown
+  /**
+   * Topic message schema. Accepts any Standard Schema implementation
+   * (zod / valibot / arktype / typebox-validator …) for runtime validation,
+   * or a plain JSON Schema object for documentation-only use.
+   */
+  schema?: TSchema
+  /**
+   * When validation runs. Defaults to `'inbound'` whenever a Standard Schema
+   * is provided. Set to `false` to disable; `'outbound'` to validate only on
+   * server-side publish; `'both'` to validate both directions.
+   */
+  validate?: ValidateMode
+  /** Route-scoped error handler. Runs before any app-level `onError`. */
+  onError?: MqttErrorHandler<TState>
   meta?: unknown
 }
+
+export type InferBody<TSchema> = TSchema extends StandardSchemaV1
+  ? StandardSchemaV1.InferOutput<TSchema>
+  : [InferExtensionsLookup<TSchema>] extends [never]
+    ? unknown
+    : InferExtensionsLookup<TSchema>
 
 export type TopicRoute<TState extends MqttAppState = MqttAppState> = {
   pattern: string
   compiled: ReturnType<typeof compileTopicPattern>
   publish: MqttTopicPolicy<TState['principal']>
   subscribe: MqttTopicPolicy<TState['principal']>
-  onMessage?: MqttHandler<TState>
+  onMessage?: MqttHandler<TState, Record<string, string>, unknown>
   middleware: MqttMiddleware<TState>[]
-  config: TopicConfig<TState>
+  config: TopicConfig<TState, unknown, Record<string, string>>
+  /** Raw schema from config (may be a non-Standard-Schema such as raw typebox). */
+  userSchema?: unknown
+  /** Resolved Standard Schema — populated at app init via `~standard` detection or registered providers. */
+  schema?: StandardSchemaV1
+  /** Whether the user explicitly set `validate`; if not, the default is re-derived at app init. */
+  explicitValidate?: ValidateMode
+  validate: ValidateMode
+  onError?: MqttErrorHandler<TState>
   meta?: unknown
 }
 
@@ -50,8 +113,11 @@ export class MqttRouter<TState extends MqttAppState = MqttAppState> implements M
     return this
   }
 
-  topic(pattern: string, config: TopicConfig<TState> = {}): this {
-    this.addRoute(pattern, config)
+  topic<Pattern extends string, TSchema = unknown>(
+    pattern: Pattern,
+    config: TopicConfig<TState, TSchema, InferParams<Pattern>> = {},
+  ): this {
+    this.addRoute(pattern, config as unknown as TopicConfig<TState, unknown, Record<string, string>>)
     return this
   }
 
@@ -63,21 +129,30 @@ export class MqttRouter<TState extends MqttAppState = MqttAppState> implements M
 
   private addRoute(
     pattern: string,
-    config: TopicConfig<TState>,
+    config: TopicConfig<TState, unknown, Record<string, string>>,
     inheritedMiddleware: MqttMiddleware<TState>[] = [],
   ): void {
     const fullPattern = joinTopic(this.options.prefix, pattern)
     const publish = config.publish ?? Boolean(config.onMessage)
     const subscribe = config.subscribe ?? !config.onMessage
+    const userSchema = config.schema
+    const standardSchema = isStandardSchemaLike(userSchema) ? (userSchema as StandardSchemaV1) : undefined
+    // Initial defaults; MqttApp.initialize re-derives them after providers run.
+    const validate = config.validate ?? (standardSchema ? 'inbound' : false)
 
     this.routes.push({
       pattern: fullPattern,
       compiled: compileTopicPattern(fullPattern),
       publish,
       subscribe,
-      onMessage: config.onMessage,
+      onMessage: config.onMessage as MqttHandler<TState, Record<string, string>, unknown> | undefined,
       middleware: [...this.middleware, ...inheritedMiddleware],
       config,
+      userSchema,
+      schema: standardSchema,
+      explicitValidate: config.validate,
+      validate,
+      onError: config.onError,
       meta: config.meta ?? this.options.meta,
     })
   }
@@ -87,4 +162,13 @@ export function router<TState extends MqttAppState = MqttAppState>(
   options?: RouterOptions,
 ): MqttRouter<TState> {
   return new MqttRouter<TState>(options)
+}
+
+function isStandardSchemaLike(value: unknown): value is StandardSchemaV1 {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && '~standard' in value
+    && typeof (value as { '~standard'?: unknown })['~standard'] === 'object'
+  )
 }

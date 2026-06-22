@@ -1,8 +1,19 @@
 export type MqttPayload = Buffer | Uint8Array | string | object | null | undefined
 
+/** Subset of MQTT 5 PUBLISH properties that we propagate end-to-end. */
+export type MqttPublishProperties = {
+  responseTopic?: string
+  correlationData?: Buffer | Uint8Array | string
+  contentType?: string
+  payloadFormatIndicator?: 0 | 1
+  messageExpiryInterval?: number
+  userProperties?: Record<string, string | string[]>
+}
+
 export type PublishOptions = {
   qos?: 0 | 1 | 2
   retain?: boolean
+  properties?: MqttPublishProperties
 }
 
 export type PublishResult = {

@@ -78,4 +78,109 @@ subscriptions naturally.
 // Client subscribes 'devices/abc/x'    → no match
 ```
 
+## Schema Validation
+
+`topic({ schema })` accepts any [Standard Schema v1](https://standardschema.dev/) validator (zod ≥3.24, valibot ≥1, arktype, …). Validated output is exposed on `ctx.body` and the type is inferred from the schema:
+
+```ts
+import { z } from 'zod'
+
+router().topic('devices/:uid/events', {
+  schema: z.object({
+    temperature: z.number(),
+    ts: z.number().int().optional(),
+  }),
+  async onMessage(ctx) {
+    // ctx.body is { temperature: number; ts?: number }
+    console.log(ctx.params.uid, ctx.body.temperature)
+  },
+})
+```
+
+Validation runs on inbound payloads by default. Override with `validate: 'both' | 'outbound' | false`. Validation failures emit a `SchemaValidationError` via the error lifecycle and skip `onMessage`.
+
+For schema libraries that do **not** implement Standard Schema (e.g. raw TypeBox), register a `SchemaProvider`:
+
+```ts
+import { typeboxProvider } from '@mqttkit/typebox'
+
+new MqttApp().addSchemaProvider(typeboxProvider)
+```
+
+See `@mqttkit/typebox` (TypeBox adapter) and `@mqttkit/zod` (attaches JSON Schema for AsyncAPI).
+
+## Error Handling
+
+`onError` runs on the route first, then any app-level handlers. Use it to format validation errors, audit failures, or send a structured error frame back to the client.
+
+```ts
+import { SchemaValidationError } from '@mqttkit/core'
+
+new MqttApp()
+  .onError(({ error, topic, phase, ctx }) => {
+    if (error instanceof SchemaValidationError) {
+      console.warn('bad payload', topic, error.issues)
+      return
+    }
+    console.error(`[${phase}] ${topic}`, error)
+  })
+  .use(
+    router().topic('devices/:uid/events', {
+      schema: /* … */,
+      onError({ error, ctx }) {
+        // route-scoped, runs first
+      },
+      async onMessage(ctx) { /* … */ },
+    }),
+  )
+```
+
+`phase` is one of `middleware | handler | validation | policy | publish`.
+
+## RPC
+
+`app.request(topic, payload, options?)` sends a request using MQTT 5 `responseTopic` + `correlationData` and resolves when the device replies. On the device side the response can be sent through `ctx.reply()` (or by publishing manually to the response topic).
+
+```ts
+const reply = await app.request(`devices/${uid}/cmd`, { op: 'reboot' }, { timeout: 3000 })
+console.log(reply.topic, reply.payload.toString())
+```
+
+```ts
+router().topic('devices/:uid/cmd', {
+  async onMessage(ctx) {
+    await ctx.reply({ ok: true })   // replies to ctx.packet.properties.responseTopic
+  },
+})
+```
+
+The broker adapter must forward inbound publishes to the runtime; `@mqttkit/aedes` ≥0.2.0 does this.
+
+## Testing
+
+`@mqttkit/core/testing` ships an in-memory `TestBroker` so you can drive an
+`MqttApp` without spawning aedes:
+
+```ts
+import { router } from '@mqttkit/core'
+import { createTestApp } from '@mqttkit/core/testing'
+
+const { app, broker } = createTestApp()
+app.use(router().topic('devices/:uid/events', {
+  async onMessage(ctx) {
+    await ctx.publish('server/ack', 'ok')
+  },
+}))
+
+await app.listen()
+await broker.dispatch({ topic: 'devices/demo/events', payload: 'hi' })
+
+expect(broker.published).toEqual([
+  expect.objectContaining({ topic: 'server/ack' }),
+])
+```
+
+`broker.onPublish` is a synchronous hook that lets you simulate device
+replies (handy for testing `app.request()` round-trips).
+
 See the repository README for full examples.

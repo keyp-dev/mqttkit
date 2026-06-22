@@ -1,27 +1,25 @@
 {
-  "name": "@mqttkit/asyncapi",
-  "version": "0.2.0",
+  "name": "@mqttkit/zod",
+  "version": "0.1.0",
   "type": "module",
-  "description": "AsyncAPI 3.0 documentation generator and HTTP plugin for mqttkit.",
+  "description": "Zod helpers for @mqttkit/core — attach JSON Schema for AsyncAPI documentation.",
   "license": "MIT",
   "homepage": "https://github.com/keyp-dev/mqttkit#readme",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/keyp-dev/mqttkit.git",
-    "directory": "packages/asyncapi"
+    "directory": "packages/zod"
   },
   "bugs": {
     "url": "https://github.com/keyp-dev/mqttkit/issues"
   },
   "keywords": [
     "mqtt",
-    "asyncapi",
-    "swagger",
-    "openapi",
-    "documentation",
     "mqttkit",
-    "typescript",
-    "bun"
+    "zod",
+    "standard-schema",
+    "json-schema",
+    "asyncapi"
   ],
   "exports": {
     ".": {
@@ -31,8 +29,8 @@
   },
   "files": [
     "dist",
-    "README.md",
-    "README.zh-CN.md"
+    "LICENSE",
+    "README.md"
   ],
   "publishConfig": {
     "access": "public"
@@ -40,11 +38,15 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean"
   },
-  "dependencies": {
-    "@mqttkit/core": "^0.2.0"
+  "peerDependencies": {
+    "zod": "^3.24.0 || ^4",
+    "zod-to-json-schema": "^3.23.0"
   },
   "devDependencies": {
+    "@mqttkit/core": "workspace:*",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.6"
   }
 }

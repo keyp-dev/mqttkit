@@ -31,6 +31,11 @@
         "@mqttkit/aedes": "workspace:*",
         "@mqttkit/asyncapi": "workspace:*",
         "@mqttkit/core": "workspace:*",
+        "@mqttkit/typebox": "workspace:*",
+        "@mqttkit/zod": "workspace:*",
+        "@sinclair/typebox": "^0.34.49",
+        "zod": "^3.24.1",
+        "zod-to-json-schema": "^3.24.6",
       },
     },
     "examples/asyncapi-elysia": {
@@ -59,6 +64,23 @@
         "mqtt": "^5.15.1",
       },
     },
+    "examples/rpc": {
+      "name": "@mqttkit/example-rpc",
+      "dependencies": {
+        "@mqttkit/core": "workspace:*",
+      },
+    },
+    "examples/schema-validation": {
+      "name": "@mqttkit/example-schema-validation",
+      "dependencies": {
+        "@mqttkit/core": "workspace:*",
+        "@mqttkit/typebox": "workspace:*",
+        "@mqttkit/zod": "workspace:*",
+        "@sinclair/typebox": "^0.34.49",
+        "zod": "^3.24.1",
+        "zod-to-json-schema": "^3.24.6",
+      },
+    },
     "examples/service-push": {
       "name": "@mqttkit/example-service-push",
       "dependencies": {
@@ -69,9 +91,9 @@
     },
     "packages/aedes": {
       "name": "@mqttkit/aedes",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
-        "@mqttkit/core": "0.0.0",
+        "@mqttkit/core": "^0.1.0",
         "websocket-stream": "^5.5.2",
       },
       "devDependencies": {
@@ -88,9 +110,9 @@
     },
     "packages/asyncapi": {
       "name": "@mqttkit/asyncapi",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
-        "@mqttkit/core": "0.0.0",
+        "@mqttkit/core": "^0.1.0",
       },
       "devDependencies": {
         "tsup": "^8.5.1",
@@ -99,10 +121,39 @@
     },
     "packages/core": {
       "name": "@mqttkit/core",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
+      },
+    },
+    "packages/typebox": {
+      "name": "@mqttkit/typebox",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@mqttkit/core": "workspace:*",
+        "@sinclair/typebox": "^0.34.49",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "@mqttkit/core": "^0.1.0",
+        "@sinclair/typebox": ">=0.34.0 <1",
+      },
+    },
+    "packages/zod": {
+      "name": "@mqttkit/zod",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@mqttkit/core": "workspace:*",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3",
+        "zod": "^3.24.1",
+        "zod-to-json-schema": "^3.24.6",
+      },
+      "peerDependencies": {
+        "zod": "^3.24.0 || ^4",
+        "zod-to-json-schema": "^3.23.0",
       },
     },
   },
@@ -189,7 +240,15 @@
 
     "@mqttkit/example-kafka-bridge": ["@mqttkit/example-kafka-bridge@workspace:examples/kafka-bridge"],
 
+    "@mqttkit/example-rpc": ["@mqttkit/example-rpc@workspace:examples/rpc"],
+
+    "@mqttkit/example-schema-validation": ["@mqttkit/example-schema-validation@workspace:examples/schema-validation"],
+
     "@mqttkit/example-service-push": ["@mqttkit/example-service-push@workspace:examples/service-push"],
+
+    "@mqttkit/typebox": ["@mqttkit/typebox@workspace:packages/typebox"],
+
+    "@mqttkit/zod": ["@mqttkit/zod@workspace:packages/zod"],
 
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.62.0", "", { "os": "android", "cpu": "arm" }, "sha512-IPIQ55ythEHkfEd9jMEi32OQ7SxURsGA43JI22lj01OLZNt2NUbJX8YUHxkVWyQ6daHPNn0truF5nSj3DQp6YQ=="],
 
@@ -488,6 +547,10 @@
     "ws": ["ws@8.21.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g=="],
 
     "xtend": ["xtend@4.0.2", "", {}, "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ=="],
+
+    "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+
+    "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, "sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA=="],
 
     "aedes-packet/mqtt-packet": ["mqtt-packet@7.1.2", "", { "dependencies": { "bl": "^4.0.2", "debug": "^4.1.1", "process-nextick-args": "^2.0.1" } }, "sha512-FFZbcZ2omsf4c5TxEQfcX9hI+JzDpDKPT46OmeIBpVA7+t32ey25UNqlqNXTmeZOr5BLsSIERpQQLsFWJS94SQ=="],
 

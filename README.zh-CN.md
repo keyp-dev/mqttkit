@@ -11,10 +11,14 @@ mqttkit 不重新实现 MQTT 协议。CONNECT、SUBSCRIBE、PUBLISH、QoS、reta
 - 有序 `use()` middleware，可用于鉴权、日志、审计、校验和拦截。
 - `router().topic()` 声明 MQTT topic route、发布策略和订阅策略。
 - `ctx.params` 自动提取 `devices/:uid/events` 这类 topic 参数。
+- `ctx.body` 承载校验后的 payload，任意 [Standard Schema](https://standardschema.dev/) 校验器（zod、valibot、arktype 等）都能直接用，并自动推断类型；原始 TypeBox 与给 zod 挂 JSON Schema 用 `@mqttkit/typebox` / `@mqttkit/zod`。
 - `ctx.services` 注入 Kafka、Redis、数据库、审计服务或业务服务。
+- `app.request()` 通过 MQTT 5 `responseTopic` + `correlationData` 做 RPC 往返；设备一侧用 `ctx.reply()` 回复。
+- `app.onError()`（以及路由级 `onError`）捕获 validation / handler / policy / middleware / publish 失败，并带结构化 `phase`。
 - `app.on()` 监听 client、publish、subscribe、ack、错误等 broker lifecycle events。
 - `app.publish()` 让外部服务、worker、consumer 通过 broker 主动推送消息给 MQTT client。
-- `@mqttkit/aedes` 基于 Aedes 提供 TCP MQTT 与 MQTT-over-WebSocket。
+- `@mqttkit/core/testing` 内置内存版 `TestBroker`，无需起 aedes 即可对 app 做单测。
+- `@mqttkit/aedes` 基于 Aedes 提供 TCP MQTT 与 MQTT-over-WebSocket（透传 MQTT 5 properties 给 RPC 用）。
 - `@mqttkit/asyncapi` 从路由生成 AsyncAPI 3.0 文档，并通过 HTTP 提供可浏览的文档页面。
 - 面向 Bun 与 TypeScript。
 
@@ -280,7 +284,9 @@ new MqttApp()
 - `examples/events`：监听 broker lifecycle events。
 - `examples/service-push`：外部服务调用 `app.publish()`，消息经 Aedes 投递到订阅中的 MQTT client。
 - `examples/kafka-bridge`：MQTT 消息写入 Kafka，并把 Kafka consumer 消息透传给 MQTT client。
-- `examples/asyncapi-docs`：通过 `@mqttkit/asyncapi` 提供 AsyncAPI 文档与浏览页面（独立 HTTP 端口）。
+- `examples/schema-validation`：zod、TypeBox 以及两者共存的 payload 校验示例。
+- `examples/rpc`：用 `app.request()` 与 `ctx.reply()` 完成 MQTT 5 RPC 往返。
+- `examples/asyncapi-docs`：通过 `@mqttkit/asyncapi` 提供 AsyncAPI 文档与浏览页面（独立 HTTP 端口），`dev:zod` 版本演示 zod + `jsonify`。
 - `examples/asyncapi-elysia`：Elysia 端口同时承载 AsyncAPI 文档与 MQTT-over-WebSocket（aedes ws 复用同一个 `http.Server`）。
 
 运行示例：
@@ -308,6 +314,8 @@ bun run build
 
 ## 包
 
-- `@mqttkit/core`：core application、router、middleware、context、event types 与 broker adapter 接口。
-- `@mqttkit/aedes`：Aedes adapter，提供 TCP MQTT 与 MQTT-over-WebSocket 接入。
+- `@mqttkit/core`：core application、router、middleware、context、schema 校验、RPC、event types、broker adapter 接口，以及 `@mqttkit/core/testing` 内存 broker。
+- `@mqttkit/aedes`：Aedes adapter，提供 TCP MQTT 与 MQTT-over-WebSocket（透传 MQTT 5 properties 给 RPC 用）。
 - `@mqttkit/asyncapi`：基于路由生成 AsyncAPI 3.0 文档与 HTTP 浏览页面。
+- `@mqttkit/typebox`：TypeBox schema 适配——注册一次，直接传原始 `Type.X(...)`。
+- `@mqttkit/zod`：给 zod schema 挂上 JSON Schema 表达，让 AsyncAPI 输出完整 payload。

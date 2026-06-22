@@ -18,7 +18,7 @@ export function buildFromRoutes(
     const params = extractParams(route.pattern)
     const hasCatchAll = /(^|\/)\*(?=\/|$)/.test(route.pattern)
     const meta = (route.meta ?? {}) as RouteDocMeta
-    const schema = route.config.schema
+    const schema = resolvePayloadSchema(route.config.schema)
     const messageId = meta.message?.name ?? 'payload'
 
     const message = pruneEmpty({
@@ -96,6 +96,29 @@ function toAsyncApiAddress(pattern: string): string {
 
 function extractParams(pattern: string): string[] {
   return [...pattern.matchAll(/:(\w+)/g)].map((m) => m[1])
+}
+
+/**
+ * Reduce a route's `schema` field to a JSON Schema object suitable for the
+ * AsyncAPI document. Standard Schema validators are accepted but most do not
+ * expose JSON Schema directly — callers can attach `~jsonSchema` (or vendor
+ * fields) to publish a richer document. Otherwise we fall back to an opaque
+ * type that still satisfies the AsyncAPI parser.
+ */
+function resolvePayloadSchema(schema: unknown): unknown {
+  if (!schema || typeof schema !== 'object') return undefined
+  if (!('~standard' in schema)) return schema
+
+  const std = schema as { '~standard': { vendor?: string }; '~jsonSchema'?: unknown }
+  if (std['~jsonSchema']) return std['~jsonSchema']
+
+  // Best-effort: zod 3.24+ exposes `.jsonSchema`, typebox uses `.schema`.
+  const candidate =
+    (schema as { jsonSchema?: unknown }).jsonSchema
+    ?? (schema as { schema?: unknown }).schema
+  if (candidate) return candidate
+
+  return { description: `Validated by ${std['~standard'].vendor ?? 'standard-schema'}` }
 }
 
 function pruneEmpty<T extends Record<string, unknown>>(input: T): T {

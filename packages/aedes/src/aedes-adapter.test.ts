@@ -172,6 +172,107 @@ describe('@mqttkit/aedes', () => {
     expect(events).toContain('auth-client')
   })
 
+  test('publish 把 MQTT 5 properties 透传到 aedes packet', async () => {
+    const adapter = new AedesBrokerAdapter({ tcp: false, ws: false })
+    const captured: Array<Record<string, unknown>> = []
+
+    // 拦截 aedes 的 broker.publish，捕获 mqttkit 构造的 packet
+    const originalPublish = adapter.broker.publish.bind(adapter.broker)
+    ;(adapter.broker as unknown as {
+      publish: (packet: Record<string, unknown>, done: (err?: Error) => void) => void
+    }).publish = (packet, done) => {
+      captured.push(packet)
+      done()
+    }
+
+    const app = new MqttApp().use({ setup: (app) => { app.broker(adapter) } })
+    await app.listen()
+    cleanup.push(async () => {
+      ;(adapter.broker as unknown as { publish: typeof originalPublish }).publish = originalPublish
+      await stopApp(app)
+    })
+
+    await app.publish('devices/x/cmd', 'ping', {
+      qos: 1,
+      properties: {
+        responseTopic: '_rpc/replies/abc',
+        correlationData: 'corr-1',
+        contentType: 'text/plain',
+        payloadFormatIndicator: 1,
+        userProperties: { trace: 't-1' },
+        messageExpiryInterval: 60,
+      },
+    })
+
+    expect(captured).toHaveLength(1)
+    const packet = captured[0] as { topic: string; properties: Record<string, unknown> }
+    expect(packet.topic).toBe('devices/x/cmd')
+    expect(packet.properties).toBeDefined()
+    expect(packet.properties.responseTopic).toBe('_rpc/replies/abc')
+    // aedes/mqtt-packet 期望 correlationData 是 Buffer，string 应被转成 Buffer
+    expect(Buffer.isBuffer(packet.properties.correlationData)).toBe(true)
+    expect((packet.properties.correlationData as Buffer).toString('utf8')).toBe('corr-1')
+    expect(packet.properties.contentType).toBe('text/plain')
+    // aedes/mqtt-packet 期望 payloadFormatIndicator 是 boolean，0|1 应被转成 boolean
+    expect(packet.properties.payloadFormatIndicator).toBe(true)
+    expect(packet.properties.userProperties).toEqual({ trace: 't-1' })
+    expect(packet.properties.messageExpiryInterval).toBe(60)
+  })
+
+  test('publish 不带 properties 时 packet 上没有 properties 字段', async () => {
+    const adapter = new AedesBrokerAdapter({ tcp: false, ws: false })
+    const captured: Array<Record<string, unknown>> = []
+
+    const originalPublish = adapter.broker.publish.bind(adapter.broker)
+    ;(adapter.broker as unknown as {
+      publish: (packet: Record<string, unknown>, done: (err?: Error) => void) => void
+    }).publish = (packet, done) => {
+      captured.push(packet)
+      done()
+    }
+
+    const app = new MqttApp().use({ setup: (app) => { app.broker(adapter) } })
+    await app.listen()
+    cleanup.push(async () => {
+      ;(adapter.broker as unknown as { publish: typeof originalPublish }).publish = originalPublish
+      await stopApp(app)
+    })
+
+    await app.publish('devices/x/cmd', 'ping')
+
+    expect(captured).toHaveLength(1)
+    expect((captured[0] as Record<string, unknown>).properties).toBeUndefined()
+  })
+
+  test('publish 透传 Buffer 形态的 correlationData', async () => {
+    const adapter = new AedesBrokerAdapter({ tcp: false, ws: false })
+    const captured: Array<Record<string, unknown>> = []
+
+    const originalPublish = adapter.broker.publish.bind(adapter.broker)
+    ;(adapter.broker as unknown as {
+      publish: (packet: Record<string, unknown>, done: (err?: Error) => void) => void
+    }).publish = (packet, done) => {
+      captured.push(packet)
+      done()
+    }
+
+    const app = new MqttApp().use({ setup: (app) => { app.broker(adapter) } })
+    await app.listen()
+    cleanup.push(async () => {
+      ;(adapter.broker as unknown as { publish: typeof originalPublish }).publish = originalPublish
+      await stopApp(app)
+    })
+
+    const buf = Buffer.from([0xde, 0xad, 0xbe, 0xef])
+    await app.publish('devices/x/cmd', 'ping', {
+      properties: { correlationData: buf },
+    })
+
+    const props = (captured[0] as { properties: Record<string, unknown> }).properties
+    // 同一个 Buffer 实例应被直接复用，无需 copy
+    expect(props.correlationData).toBe(buf)
+  })
+
   test('mqtt.js 可以通过标准 MQTT-over-WebSocket 使用同一个 router', async () => {
     const adapter = new AedesBrokerAdapter({ tcp: false, ws: { port: 0, path: '/mqtt' } })
     let payload: string | undefined
