@@ -10,9 +10,10 @@
   ],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "test": "bun test packages/core/src/matcher.test.ts packages/core/src/pattern.test.ts packages/core/src/schema.test.ts packages/core/src/error.test.ts packages/core/src/rpc.test.ts packages/core/src/app.test.ts packages/core/src/testing.test.ts packages/core/src/metrics.test.ts packages/aedes/src/aedes-adapter.test.ts packages/typebox/src/typebox.test.ts packages/zod/src/zod.test.ts",
+    "test": "bun test packages/core/src/matcher.test.ts packages/core/src/pattern.test.ts packages/core/src/schema.test.ts packages/core/src/error.test.ts packages/core/src/logger.test.ts packages/core/src/rpc.test.ts packages/core/src/app.test.ts packages/core/src/testing.test.ts packages/core/src/metrics.test.ts packages/aedes/src/aedes-adapter.test.ts packages/asyncapi/src/builder.test.ts packages/asyncapi/src/handlers.test.ts packages/asyncapi/src/plugin.test.ts packages/asyncapi/src/yaml.test.ts packages/typebox/src/typebox.test.ts packages/zod/src/zod.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepublish:check": "bun run test && bun run typecheck && bun run build",
+    "publish:status": "node scripts/publish.mjs --check",
     "publish:dry-run": "node scripts/publish.mjs --dry-run",
     "publish:packages": "node scripts/publish.mjs",
     "publish:core": "node scripts/publish.mjs core",

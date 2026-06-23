@@ -60,6 +60,66 @@ const app = new MqttApp<{ principal?: { uid: string } }>()
 await app.listen()
 ```
 
+## App API at a glance
+
+The `MqttApp` builder methods covered in the quick start are listed below.
+Each returns `this`, so they chain.
+
+| Method | Purpose |
+| --- | --- |
+| `use(plugin \| middleware)` | Register a plugin (`router()`, broker adapter, …) or a global middleware. |
+| `decorate(key, value)` | Inject a service into `ctx.services` with type inference on the App generic. |
+| `on(eventName, handler)` | Observe broker lifecycle events (`client.connect`, `client.subscribe`, …). |
+| `onStart(hook)` / `onStop(hook)` | Run code after `listen()` succeeds or before `stop()` finishes. |
+| `onError(handler)` | App-level error sink — receives `{ error, topic, phase, route, ctx }`. |
+| `onMetric(handler)` | Structured per-dispatch / per-publish events for Prometheus / OTel. |
+| `onBeforePublish(hook)` | Mutate outbound `{ topic, payload, options }` (e.g. inject `traceparent`). |
+| `logger(logger)` | Forward mqttkit's internal warnings into pino / OpenTelemetry / Sentry. |
+| `addSchemaProvider(provider)` | Plug in non-Standard-Schema validators (e.g. raw TypeBox). |
+| `publish(topic, payload, opts?)` | Server-side outbound publish (also funnels through `onBeforePublish`). |
+| `request(topic, payload, opts?)` | MQTT 5 RPC with optional `retries` / `retryDelay`. |
+| `stop({ drain?, timeout? })` | Graceful shutdown — defaults to draining in-flight handlers. |
+
+### Error handling sketch
+
+```ts
+import { MqttApp, router } from '@mqttkit/core'
+
+const app = new MqttApp()
+  .use(adapter)
+  .onError(({ error, phase, topic }) => {
+    // phases: middleware | handler | validation | policy | publish | timeout | overload
+    sentry.captureException(error, { tags: { topic, phase } })
+  })
+  .use(
+    router().topic('devices/:uid/events', {
+      timeout: 1_000,
+      concurrency: 100,
+      onError: ({ error }) => metrics.routeFailures.inc(), // route-scoped, runs first
+      async onMessage(ctx) {
+        await doWork(ctx)
+      },
+    }),
+  )
+```
+
+### Custom logger
+
+```ts
+import { MqttApp, type MqttLogger } from '@mqttkit/core'
+import { pino } from 'pino'
+
+const log = pino({ name: 'mqttkit' })
+const logger: MqttLogger = {
+  debug: (msg, meta) => log.debug(meta, msg),
+  info: (msg, meta) => log.info(meta, msg),
+  warn: (msg, meta) => log.warn(meta, msg),
+  error: (msg, meta) => log.error(meta, msg),
+}
+
+new MqttApp().logger(logger)
+```
+
 ## Schema Validation
 
 `topic({ schema })` accepts any [Standard Schema](https://standardschema.dev/) validator (zod, valibot, arktype, …). The validated payload is exposed on `ctx.body` with full type inference.
@@ -89,7 +149,7 @@ See the [Getting Started guide](https://mqttkit.keyp.dev/getting-started) for ro
 
 ## Examples
 
-Runnable examples under [`examples/`](./examples) cover the basic TCP / WebSocket broker, lifecycle events, service push, Kafka bridge, schema validation, MQTT 5 RPC, AsyncAPI docs (standalone HTTP or shared Elysia port), and Prometheus metrics.
+Runnable examples under [`examples/`](./examples) cover the basic TCP / WebSocket broker, lifecycle events, service push, Kafka bridge, schema validation, MQTT 5 RPC (including `app.request({ retries, retryDelay })`), AsyncAPI docs (standalone HTTP or shared Elysia port), Prometheus metrics, and a custom JSON logger (`examples/custom-logger`).
 
 ```bash
 bun install
@@ -102,4 +162,20 @@ bun run --cwd examples/aedes-basic dev
 bun run test
 bun run typecheck
 bun run build
+```
+
+## Releasing
+
+`scripts/publish.mjs` compares each package's local version against the npm registry and only publishes packages whose local version is ahead (or not on npm yet). Packages already in sync are silently skipped.
+
+```bash
+bun run publish:status      # report local vs npm without publishing
+bun run publish:dry-run     # dry-run the actual publish flow
+bun run publish:packages    # publish whatever needs publishing
+
+# Single package by name (still subject to the version-ahead check)
+bun run publish:core
+
+# Bypass the check (rarely needed)
+node scripts/publish.mjs --force
 ```

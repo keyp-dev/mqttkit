@@ -1,0 +1,12 @@
+{
+  "name": "@mqttkit/example-custom-logger",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mqttkit/core": "workspace:*"
+  }
+}

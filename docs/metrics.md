@@ -101,7 +101,7 @@ It exposes `mqtt_dispatch_seconds`, `mqtt_publish_seconds`, `mqtt_inflight`, `mq
 
 ## Handler safety
 
-Multiple handlers run in registration order and are awaited. If a handler throws, the failure is caught and logged (`[mqttkit] metric handler threw: …`) so a bad exporter cannot break message processing.
+Multiple handlers run in registration order and are awaited. If a handler throws, the failure is caught and reported through the active [`MqttLogger`](./logger) as `logger.error('metric handler threw', { error })` so a bad exporter cannot break message processing.
 
 ## What you do not get
 

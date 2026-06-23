@@ -14,11 +14,18 @@ import type {
 } from './context.js'
 import { Dispatcher, validatePayload } from './dispatcher.js'
 import type { MqttEvent, MqttEventHandler, MqttEventName } from './events.js'
+import { consoleLogger, type MqttLogger } from './logger.js'
 import type { MqttMetricHandler } from './metrics.js'
 import { toPayloadBuffer } from './payload.js'
 import type { MqttPlugin } from './plugin.js'
 import type { MqttBeforePublishHook } from './publish-hook.js'
-import { RpcManager, readPacketProperties, type RpcRequestOptions, type RpcResponse } from './rpc.js'
+import {
+  RpcManager,
+  RpcTimeoutError,
+  readPacketProperties,
+  type RpcRequestOptions,
+  type RpcResponse,
+} from './rpc.js'
 import type { TopicRoute } from './router.js'
 import { isStandardSchema, type SchemaProvider, wrapSchemaProvider } from './standard-schema.js'
 
@@ -40,6 +47,7 @@ export class MqttApp<TState extends MqttAppState = MqttAppState> {
   private brokerAdapter?: MqttBrokerAdapter<TState['principal']>
   private dispatcher?: Dispatcher<TState>
   private readyPromise?: Promise<void>
+  private loggerImpl: MqttLogger = consoleLogger
 
   use(plugin: MqttPlugin<TState>): this
   use(middleware: MqttMiddleware<TState>): this
@@ -124,6 +132,25 @@ export class MqttApp<TState extends MqttAppState = MqttAppState> {
     return this
   }
 
+  /**
+   * Inject a structured logger. mqttkit only ever logs internal warnings
+   * (drain timeouts, validation failures with no `onError` handler, throws
+   * inside user metric/error chains) — never message payloads. Defaults to
+   * `consoleLogger`; pass `noopLogger` for silence or your own implementation
+   * to forward into pino / OpenTelemetry / Sentry.
+   *
+   * Must be called before `listen()` to take effect inside the dispatcher.
+   */
+  logger(logger: MqttLogger): this {
+    this.loggerImpl = logger
+    return this
+  }
+
+  /** Read the currently active logger. Plugins use this to share the pipeline. */
+  getLogger(): MqttLogger {
+    return this.loggerImpl
+  }
+
   onStart(hook: () => void | Promise<void>): this {
     this.startHooks.push(hook)
     return this
@@ -182,8 +209,9 @@ export class MqttApp<TState extends MqttAppState = MqttAppState> {
       if (drain) {
         const drained = await this.dispatcher.drain(timeout)
         if (!drained) {
-          console.warn(
-            `[mqttkit] stop() drain timed out after ${timeout}ms; ${this.dispatcher.activeCount()} handler(s) still in-flight`,
+          this.loggerImpl.warn(
+            `stop() drain timed out after ${timeout}ms; handler(s) still in-flight`,
+            { timeoutMs: timeout, inflight: this.dispatcher.activeCount() },
           )
         }
       }
@@ -216,21 +244,40 @@ export class MqttApp<TState extends MqttAppState = MqttAppState> {
     options: RpcRequestOptions = {},
   ): Promise<RpcResponse> {
     await this.ready()
-    const { responseTopic, correlationData, promise } = this.rpc.createRequest({
-      timeout: options.timeout ?? 5000,
-      responseTopicPrefix: options.responseTopicPrefix,
-    })
+    const perAttemptTimeout = options.timeout ?? 5000
+    const retries = Math.max(0, options.retries ?? 0)
+    const retryDelay = Math.max(0, options.retryDelay ?? 0)
 
-    await this.publish(topic, payload, {
-      qos: options.qos,
-      properties: {
-        ...options.properties,
-        responseTopic,
-        correlationData,
-      },
-    })
+    let lastTimeout: RpcTimeoutError | undefined
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      const { responseTopic, correlationData, promise } = this.rpc.createRequest({
+        timeout: perAttemptTimeout,
+        responseTopicPrefix: options.responseTopicPrefix,
+      })
 
-    return promise
+      await this.publish(topic, payload, {
+        qos: options.qos,
+        properties: {
+          ...options.properties,
+          responseTopic,
+          correlationData,
+        },
+      })
+
+      try {
+        return await promise
+      } catch (err) {
+        // Only retry the timeout error class — any other failure (app.stop,
+        // broker errors, …) is propagated immediately so callers don't get
+        // multiplied non-idempotent retries.
+        if (!(err instanceof RpcTimeoutError)) throw err
+        lastTimeout = err
+        if (attempt < retries && retryDelay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay))
+        }
+      }
+    }
+    throw lastTimeout ?? new RpcTimeoutError(perAttemptTimeout, '<unknown>')
   }
 
   async publish(topic: string, payload: MqttPayload, options?: PublishOptions): Promise<void> {
@@ -320,6 +367,7 @@ export class MqttApp<TState extends MqttAppState = MqttAppState> {
       createContext: (input) => this.createContext(input),
       appErrorHandlers: this.errorHandlers,
       metricHandlers: this.metricHandlers,
+      logger: this.loggerImpl,
       interceptRpc: (message) => this.rpc.consume(message),
     })
   }

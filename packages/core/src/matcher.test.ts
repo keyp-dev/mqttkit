@@ -80,6 +80,38 @@ describe('compileTopicPattern.matchSubscription (subscribe path)', () => {
   })
 })
 
+describe('compileTopicPattern 边界与脏数据', () => {
+  test('超长 topic（4KB）不会爆栈，匹配仍正确', () => {
+    const long = 'a/'.repeat(2048) + 'tail' // ~4KB
+    const c = compileTopicPattern('a/*')
+    expect(c.match(long)).not.toBeNull()
+  })
+
+  test('topic 含控制字符（\\0、\\t、emoji）仍走字面匹配', () => {
+    const c = compileTopicPattern('devices/:uid/events')
+    expect(c.match('devices/\u0000id/events')).toEqual({ uid: '\u0000id' })
+    expect(c.match('devices/\t/events')).toEqual({ uid: '\t' })
+    expect(c.match('devices/🚀/events')).toEqual({ uid: '🚀' })
+  })
+
+  test('topic 仅由斜杠构成 → 等价于空 topic，不匹配任何非空 pattern', () => {
+    const c = compileTopicPattern('devices/:uid/events')
+    expect(c.match('///')).toBeNull()
+    expect(c.match('/')).toBeNull()
+  })
+
+  test('空 topic 不匹配 pattern：devices/:uid', () => {
+    const c = compileTopicPattern('devices/:uid')
+    expect(c.match('')).toBeNull()
+  })
+
+  test('两端冗余斜杠会被规范化', () => {
+    const c = compileTopicPattern('devices/:uid')
+    expect(c.match('/devices/abc/')).toEqual({ uid: 'abc' })
+    expect(c.match('//devices//abc//')).toBeNull() // 中间多 / 不再被吃
+  })
+})
+
 describe('parseSharedSubscription (MQTT 5 $share/<group>/<filter>)', () => {
   test('普通订阅返回 null', () => {
     expect(parseSharedSubscription('devices/+/events')).toBeNull()
@@ -100,5 +132,27 @@ describe('parseSharedSubscription (MQTT 5 $share/<group>/<filter>)', () => {
     expect(parseSharedSubscription('$share/g#/a')).toBeNull()
     expect(parseSharedSubscription('$share/g/')).toBeNull()
     expect(parseSharedSubscription('$share/g')).toBeNull()
+  })
+
+  test('group 不允许 NUL 字节', () => {
+    expect(parseSharedSubscription('$share/g\u0000x/a')).toBeNull()
+  })
+
+  test('filter 全部由斜杠组成 → null', () => {
+    expect(parseSharedSubscription('$share/g//')).toBeNull()
+    expect(parseSharedSubscription('$share/g///')).toBeNull()
+  })
+
+  test('filter 中 # 必须独占且位于末尾', () => {
+    expect(parseSharedSubscription('$share/g/a/#')).toEqual({ group: 'g', topic: 'a/#' })
+    expect(parseSharedSubscription('$share/g/#/a')).toBeNull()
+    expect(parseSharedSubscription('$share/g/a#')).toBeNull()
+    expect(parseSharedSubscription('$share/g/a/b#')).toBeNull()
+  })
+
+  test('filter 中 + 必须独占一段', () => {
+    expect(parseSharedSubscription('$share/g/a/+')).toEqual({ group: 'g', topic: 'a/+' })
+    expect(parseSharedSubscription('$share/g/a+/b')).toBeNull()
+    expect(parseSharedSubscription('$share/g/+a')).toBeNull()
   })
 })

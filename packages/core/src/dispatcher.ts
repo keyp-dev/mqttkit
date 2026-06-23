@@ -9,6 +9,7 @@ import type {
   MqttMiddleware,
   MqttPolicyInput,
 } from './context.js'
+import type { MqttLogger } from './logger.js'
 import { parseSharedSubscription } from './matcher.js'
 import type { MqttMetricEvent, MqttMetricHandler } from './metrics.js'
 import type { TopicRoute, ValidateMode } from './router.js'
@@ -47,6 +48,7 @@ export type DispatcherOptions<TState extends MqttAppState = MqttAppState> = {
   createContext(input: ContextFactoryInput<TState>): MqttContext<TState>
   appErrorHandlers: MqttErrorHandler<TState>[]
   metricHandlers: MqttMetricHandler[]
+  logger: MqttLogger
   /** Optional RPC interceptor; returns true if the message was consumed. */
   interceptRpc?(message: BrokerMessage<TState['principal']>): boolean
 }
@@ -146,7 +148,7 @@ export class Dispatcher<TState extends MqttAppState = MqttAppState> {
               route,
             )
             if (!consumed && error instanceof SchemaValidationError) {
-              console.warn(`[mqttkit] ${error.message}`)
+              this.options.logger.warn(error.message, { topic: message.topic, phase: 'validation' })
             }
             result = 'error'
             errorPhase = 'validation'
@@ -232,7 +234,7 @@ export class Dispatcher<TState extends MqttAppState = MqttAppState> {
       try {
         await handler(event)
       } catch (chainError) {
-        console.error('[mqttkit] metric handler threw:', chainError)
+        this.options.logger.error('metric handler threw', { error: chainError })
       }
     }
   }
@@ -336,7 +338,7 @@ export class Dispatcher<TState extends MqttAppState = MqttAppState> {
       try {
         await handler(payload)
       } catch (chainError) {
-        console.error('[mqttkit] error handler threw:', chainError)
+        this.options.logger.error('error handler threw', { error: chainError })
       }
     }
     return true

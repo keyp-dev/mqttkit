@@ -52,11 +52,33 @@ export function asyncapi<TState extends MqttAppState = MqttAppState>(
           }
         })
 
-        await listen(ownedServer, options.port ?? DEFAULT_PORT, options.host)
+        const desiredPort = options.port ?? DEFAULT_PORT
+        const desiredHost = options.host
+        try {
+          await listen(ownedServer, desiredPort, desiredHost)
+        } catch (error) {
+          // Wrap with the address we tried so port conflicts produce an
+          // actionable message instead of a bare EADDRINUSE.
+          throw new Error(
+            `[mqttkit/asyncapi] failed to bind http://${desiredHost ?? 'localhost'}:${desiredPort}: ${(error as Error).message}`,
+            { cause: error },
+          )
+        }
+
+        // Surface post-startup runtime errors (e.g. ECONNRESET storms) instead
+        // of letting them crash the process as 'uncaughtException'.
+        ownedServer.on('error', (err) => {
+          app.getLogger().error('asyncapi http server error', { error: err })
+        })
+
         const address = ownedServer.address()
-        const port = typeof address === 'object' && address ? address.port : options.port ?? DEFAULT_PORT
-        const host = options.host ?? 'localhost'
-        console.log(`[mqttkit/asyncapi] docs: http://${host}:${port}${paths.docs}`)
+        const port = typeof address === 'object' && address ? address.port : desiredPort
+        const host = desiredHost ?? 'localhost'
+        app.getLogger().info(`asyncapi docs ready`, {
+          url: `http://${host}:${port}${paths.docs}`,
+          json: `http://${host}:${port}${paths.json}`,
+          yaml: `http://${host}:${port}${paths.yaml}`,
+        })
       })
 
       app.onStop(async () => {

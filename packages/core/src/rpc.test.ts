@@ -171,4 +171,49 @@ describe('RPC (MQTT 5 request/response)', () => {
     const response = await app.request('devices/demo/cmd', 'ping', { timeout: 500 })
     expect(response.payload.toString()).toBe('echo:ping')
   })
+
+  test('retries: 第一次超时后第二次成功 → resolve 正确响应', async () => {
+    const broker = new TestBroker()
+    const app = new MqttApp().use({ setup: (app) => { app.broker(broker) } })
+    await app.listen()
+
+    let attemptCount = 0
+    broker.onPublish = (entry) => {
+      if (entry.topic !== 'devices/x/cmd') return
+      attemptCount += 1
+      // 第一次故意不回；第二次正常回。
+      if (attemptCount < 2) return
+      const properties = entry.options?.properties
+      if (!properties?.responseTopic || !properties.correlationData) return
+      queueMicrotask(() => {
+        void broker.dispatch({
+          topic: properties.responseTopic!,
+          payload: Buffer.from('pong'),
+          clientId: 'device-x',
+          packet: { properties: { correlationData: properties.correlationData } },
+        })
+      })
+    }
+
+    const response = await app.request('devices/x/cmd', 'ping', { timeout: 30, retries: 2 })
+    expect(response.payload.toString()).toBe('pong')
+    expect(attemptCount).toBe(2)
+    expect(broker.published.filter((p) => p.topic === 'devices/x/cmd')).toHaveLength(2)
+  })
+
+  test('retries: 用尽后抛 RpcTimeoutError', async () => {
+    const broker = new TestBroker()
+    const app = new MqttApp().use({ setup: (app) => { app.broker(broker) } })
+    await app.listen()
+
+    let attemptCount = 0
+    broker.onPublish = (entry) => {
+      if (entry.topic === 'devices/x/cmd') attemptCount += 1
+    }
+
+    await expect(
+      app.request('devices/x/cmd', 'ping', { timeout: 20, retries: 2 }),
+    ).rejects.toThrow(/timed out/)
+    expect(attemptCount).toBe(3)
+  })
 })

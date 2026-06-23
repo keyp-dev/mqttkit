@@ -52,6 +52,12 @@
         "mqtt": "^5.15.1",
       },
     },
+    "examples/custom-logger": {
+      "name": "@mqttkit/example-custom-logger",
+      "dependencies": {
+        "@mqttkit/core": "workspace:*",
+      },
+    },
     "examples/events": {
       "name": "@mqttkit/example-events",
       "dependencies": {
@@ -121,7 +127,7 @@
     },
     "packages/asyncapi": {
       "name": "@mqttkit/asyncapi",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "dependencies": {
         "@mqttkit/core": "^0.1.0",
       },
@@ -132,7 +138,7 @@
     },
     "packages/core": {
       "name": "@mqttkit/core",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "devDependencies": {
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
@@ -154,7 +160,7 @@
     },
     "packages/zod": {
       "name": "@mqttkit/zod",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@mqttkit/core": "workspace:*",
         "tsup": "^8.5.1",
@@ -163,6 +169,7 @@
         "zod-to-json-schema": "^3.24.6",
       },
       "peerDependencies": {
+        "@mqttkit/core": "^0.2.0",
         "zod": "^3.24.0 || ^4",
         "zod-to-json-schema": "^3.23.0",
       },
@@ -312,6 +319,8 @@
     "@mqttkit/example-asyncapi-docs": ["@mqttkit/example-asyncapi-docs@workspace:examples/asyncapi-docs"],
 
     "@mqttkit/example-asyncapi-elysia": ["@mqttkit/example-asyncapi-elysia@workspace:examples/asyncapi-elysia"],
+
+    "@mqttkit/example-custom-logger": ["@mqttkit/example-custom-logger@workspace:examples/custom-logger"],
 
     "@mqttkit/example-events": ["@mqttkit/example-events@workspace:examples/events"],
 

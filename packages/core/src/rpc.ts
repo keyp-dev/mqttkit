@@ -1,16 +1,45 @@
-import type { BrokerMessage, MqttPublishProperties } from './broker.js'
+import type { BrokerMessage, MqttPacket, MqttPublishProperties } from './broker.js'
 
 export type RpcRequestOptions = {
   /** Request payload. */
   payload?: unknown
   /** QoS for the outbound request (0/1/2). Defaults to 0. */
   qos?: 0 | 1 | 2
-  /** Timeout in ms. Defaults to 5_000. */
+  /**
+   * Per-attempt timeout (ms). Defaults to 5_000. With `retries > 0` this is the
+   * budget per attempt, not the total — total wall time is bounded by
+   * `(retries + 1) * timeout + retries * retryDelay`.
+   */
   timeout?: number
   /** Optional extra MQTT 5 properties (excluding responseTopic/correlationData). */
   properties?: Omit<MqttPublishProperties, 'responseTopic' | 'correlationData'>
   /** Override the response topic prefix (default `_rpc/replies`). */
   responseTopicPrefix?: string
+  /**
+   * Total number of retries on timeout. `0` (default) keeps the legacy
+   * fail-fast behaviour. Only attempt this for **idempotent** RPC topics —
+   * the retried publish goes out as a fresh message with a new correlation
+   * key, so a non-idempotent handler would run twice.
+   */
+  retries?: number
+  /** Delay (ms) between retries. Defaults to `0` (immediate). */
+  retryDelay?: number
+}
+
+/**
+ * Thrown when an RPC request times out. Catching this discriminates timeouts
+ * from other RPC failures (broker errors, app stopping) so retry loops only
+ * retry the right thing.
+ */
+export class RpcTimeoutError extends Error {
+  readonly timeoutMs: number
+  readonly responseTopic: string
+  constructor(timeoutMs: number, responseTopic: string) {
+    super(`RPC request timed out after ${timeoutMs}ms (topic=${responseTopic})`)
+    this.name = 'RpcTimeoutError'
+    this.timeoutMs = timeoutMs
+    this.responseTopic = responseTopic
+  }
 }
 
 export type RpcResponse = {
@@ -48,7 +77,7 @@ export class RpcManager {
     const promise = new Promise<RpcResponse>((resolve, reject) => {
       const timer = setTimeout(() => {
         if (this.pending.delete(correlationKey)) {
-          reject(new Error(`RPC request timed out after ${options.timeout}ms (topic=${responseTopic})`))
+          reject(new RpcTimeoutError(options.timeout, responseTopic))
         }
       }, options.timeout)
       this.pending.set(correlationKey, { resolve, reject, timer, responseTopic })
@@ -86,10 +115,9 @@ export class RpcManager {
   }
 }
 
-export function readPacketProperties(packet: unknown): MqttPublishProperties | undefined {
+export function readPacketProperties(packet: MqttPacket): MqttPublishProperties | undefined {
   if (!packet || typeof packet !== 'object') return undefined
-  const properties = (packet as { properties?: MqttPublishProperties }).properties
-  return properties
+  return (packet as { properties?: MqttPublishProperties }).properties
 }
 
 function decodeCorrelationKey(

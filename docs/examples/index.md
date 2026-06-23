@@ -28,3 +28,4 @@ bun run --cwd examples/<name> dev
 ## Observability
 
 - [Prometheus Metrics](./metrics-prometheus) — full `onMetric` + `onError` + `inflight` gauges wired into `prom-client`.
+- [Custom Logger](./custom-logger) — plug a JSON-line logger into `app.logger()` and watch all framework-emitted warn/error flow through it.

@@ -28,3 +28,4 @@ bun run --cwd examples/<name> dev
 ## 可观测性
 
 - [Prometheus 指标](./metrics-prometheus) —— `onMetric` + `onError` + `inflight` gauge 接入 `prom-client` 的完整模板。
+- [自定义 Logger](./custom-logger) —— 把 JSON 行 logger 接到 `app.logger()`，观察框架内部所有 warn/error 的流向。

@@ -58,9 +58,14 @@ const SHARED_PREFIX = '$share/'
 
 /**
  * Parse an MQTT 5 shared subscription filter (`$share/<group>/<topic-filter>`).
- * Returns the group + actual topic filter, or `null` for a normal subscription.
+ * Returns the group + actual topic filter, or `null` for a normal subscription
+ * **or** a malformed `$share/...` string. Returning `null` for malformed
+ * shared subs is intentional: callers fall through to normal subscription
+ * matching, which will reject the topic anyway because no route matches.
  *
- * Group rules per MQTT 5 §4.8.2: non-empty, no `/`, `+`, or `#`.
+ * Group rules per MQTT 5 §4.8.2: non-empty, no `/`, `+`, `#`, NUL.
+ * Remainder rules: must contain at least one non-`/` character; `#` (if
+ * present) must be the entire final segment; `+` must occupy a whole segment.
  */
 export function parseSharedSubscription(topic: string): SharedSubscription | null {
   const normalized = topic.trim()
@@ -71,7 +76,24 @@ export function parseSharedSubscription(topic: string): SharedSubscription | nul
   const group = rest.slice(0, slash)
   const remainder = rest.slice(slash + 1)
   if (remainder.length === 0) return null
-  if (group.includes('+') || group.includes('#')) return null
+  if (group.includes('+') || group.includes('#') || group.includes('\u0000')) return null
+  // Reject filters that collapse to nothing once empty levels are stripped
+  // (e.g. `$share/g//`, `$share/g///`). Without this guard the remainder
+  // would silently become `''` after splitTopic and match every route.
+  if (normalizeTopic(remainder) === '') return null
+
+  // Reject filters whose MQTT wildcards are misplaced — these would be
+  // rejected by every spec-compliant broker too, but mqttkit's own matcher
+  // does not enforce wildcard rules.
+  const segments = remainder.split('/')
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i]
+    // '#' must be the last segment and occupy it entirely.
+    if (seg.includes('#') && (i !== segments.length - 1 || seg !== '#')) return null
+    // '+' must occupy the whole segment.
+    if (seg.includes('+') && seg !== '+') return null
+  }
+
   return { group, topic: remainder }
 }
 

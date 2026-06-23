@@ -10,6 +10,16 @@ export type MqttPublishProperties = {
   userProperties?: Record<string, string | string[]>
 }
 
+/**
+ * Adapter-specific PUBLISH packet shape — mqttkit treats it as opaque except
+ * for `.properties`, which it reads through `readPacketProperties` with a
+ * defensive cast. Typed as `unknown` so each adapter (aedes, mqtt.js, …) can
+ * pass its own native packet type without core having to track every quirk
+ * (e.g. aedes types `payloadFormatIndicator` as `boolean`, MQTT 5 spec uses
+ * `0 | 1`).
+ */
+export type MqttPacket = unknown
+
 export type PublishOptions = {
   qos?: 0 | 1 | 2
   retain?: boolean
@@ -25,7 +35,7 @@ export type BrokerMessage<TPrincipal = unknown> = {
   payload: Buffer
   clientId: string
   principal?: TPrincipal
-  packet?: unknown
+  packet?: MqttPacket
 }
 
 export type BrokerStartOptions<TPrincipal = unknown> = {
@@ -39,7 +49,7 @@ export type SubscribeCheckInput<TPrincipal = unknown> = {
   topic: string
   clientId: string
   principal?: TPrincipal
-  packet?: unknown
+  packet?: MqttPacket
 }
 
 export type SubscribeCheckResult = {

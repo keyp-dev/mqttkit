@@ -84,6 +84,7 @@ const GUIDE_SECTIONS: SidebarSection[] = [
       { id: 'handler-limits', en: 'Handler Timeout & Concurrency', zh: 'Handler 超时与并发' },
       { id: 'graceful-shutdown', en: 'Graceful Shutdown', zh: '优雅关停' },
       { id: 'metrics', en: 'Metrics', zh: '指标' },
+      { id: 'logger', en: 'Logger', zh: 'Logger' },
       { id: 'tracing', en: 'Tracing & User Properties', zh: 'Tracing 与 User Properties' },
     ],
   },
@@ -147,6 +148,7 @@ const EXAMPLE_SECTIONS: { en: string; zh: string; items: ExampleEntry[] }[] = [
     zh: '可观测性',
     items: [
       { id: 'metrics-prometheus', en: 'Prometheus Metrics', zh: 'Prometheus 指标' },
+      { id: 'custom-logger', en: 'Custom Logger', zh: '自定义 Logger' },
     ],
   },
 ]

@@ -1,5 +1,5 @@
 import type { MqttApp } from './app.js'
-import type { BrokerMessage, MqttPayload, PublishOptions } from './broker.js'
+import type { BrokerMessage, MqttPacket, MqttPayload, PublishOptions } from './broker.js'
 import type { TopicRoute } from './router.js'
 
 export type { MqttPayload } from './broker.js'
@@ -28,7 +28,7 @@ export type MqttContext<
   clientId: string
   principal: TState['principal']
   services: NonNullable<TState['services']>
-  packet?: unknown
+  packet?: MqttPacket
   /**
    * MQTT 5 user properties from the inbound publish, if any. A flat read view
    * of `packet.properties.userProperties` — handy for trace propagation,
@@ -79,7 +79,7 @@ export type MqttPolicyInput<
     pattern: string
     meta?: unknown
   }
-  packet?: unknown
+  packet?: MqttPacket
 }
 
 export type MqttTopicPolicy<

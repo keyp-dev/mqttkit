@@ -101,7 +101,7 @@ bun run --cwd examples/metrics-prometheus dev
 
 ## handler 安全
 
-多个 handler 按注册顺序运行并被 `await`。某个 handler 抛错时会被捕获并打印（`[mqttkit] metric handler threw: …`），不会中断消息处理。
+多个 handler 按注册顺序运行并被 `await`。某个 handler 抛错时会被当前激活的 [`MqttLogger`](./logger) 接住（`logger.error('metric handler threw', { error })`），不会中断消息处理。
 
 ## 不包含的内容
 

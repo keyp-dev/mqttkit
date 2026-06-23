@@ -60,6 +60,65 @@ const app = new MqttApp<{ principal?: { uid: string } }>()
 await app.listen()
 ```
 
+## App API 一览
+
+下列方法都返回 `this`，可以链式调用：
+
+| 方法 | 用途 |
+| --- | --- |
+| `use(plugin \| middleware)` | 注册 plugin（`router()`、broker 适配器…）或全局 middleware。 |
+| `decorate(key, value)` | 把服务注入 `ctx.services`，类型推断会沿用到 App 泛型。 |
+| `on(eventName, handler)` | 监听 broker lifecycle event（`client.connect`、`client.subscribe`…）。 |
+| `onStart(hook)` / `onStop(hook)` | `listen()` 成功后或 `stop()` 之前运行的钩子。 |
+| `onError(handler)` | 应用级错误漏斗——接收 `{ error, topic, phase, route, ctx }`。 |
+| `onMetric(handler)` | 每次 dispatch / publish 完成时发结构化指标，对接 Prometheus / OTel。 |
+| `onBeforePublish(hook)` | 出站发布前修改 `{ topic, payload, options }`（例如注入 `traceparent`）。 |
+| `logger(logger)` | 把 mqttkit 内部告警导入 pino / OpenTelemetry / Sentry 管线。 |
+| `addSchemaProvider(provider)` | 注册非 Standard-Schema 的校验器（如裸 TypeBox）。 |
+| `publish(topic, payload, opts?)` | 服务端主动发布（同样走 `onBeforePublish`）。 |
+| `request(topic, payload, opts?)` | MQTT 5 RPC，支持 `retries` / `retryDelay`。 |
+| `stop({ drain?, timeout? })` | 优雅停机——默认会等 in-flight handler 排空。 |
+
+### 错误处理示例
+
+```ts
+import { MqttApp, router } from '@mqttkit/core'
+
+const app = new MqttApp()
+  .use(adapter)
+  .onError(({ error, phase, topic }) => {
+    // phase 取值: middleware | handler | validation | policy | publish | timeout | overload
+    sentry.captureException(error, { tags: { topic, phase } })
+  })
+  .use(
+    router().topic('devices/:uid/events', {
+      timeout: 1_000,
+      concurrency: 100,
+      onError: ({ error }) => metrics.routeFailures.inc(), // 路由级，先于应用级运行
+      async onMessage(ctx) {
+        await doWork(ctx)
+      },
+    }),
+  )
+```
+
+### 自定义 logger
+
+```ts
+import { MqttApp, type MqttLogger } from '@mqttkit/core'
+import { pino } from 'pino'
+
+const log = pino({ name: 'mqttkit' })
+const logger: MqttLogger = {
+  debug: (msg, meta) => log.debug(meta, msg),
+  info: (msg, meta) => log.info(meta, msg),
+  warn: (msg, meta) => log.warn(meta, msg),
+  error: (msg, meta) => log.error(meta, msg),
+}
+
+new MqttApp().logger(logger)
+```
+
 ## Schema 校验
 
 `topic({ schema })` 接受任意 [Standard Schema](https://standardschema.dev/) 校验器（zod、valibot、arktype 等）。校验后的 payload 暴露在 `ctx.body` 上，并自动推断类型。
@@ -89,7 +148,7 @@ router、middleware、events、RPC、Kafka 桥接等详见 [快速开始](https:
 
 ## 示例
 
-[`examples/`](./examples) 下有可运行示例：TCP / WebSocket broker、lifecycle events、service push、Kafka bridge、schema 校验、MQTT 5 RPC、AsyncAPI 文档（独立 HTTP 或与 Elysia 复用端口）、Prometheus 指标。
+[`examples/`](./examples) 下有可运行示例：TCP / WebSocket broker、lifecycle events、service push、Kafka bridge、schema 校验、MQTT 5 RPC（含 `app.request({ retries, retryDelay })`）、AsyncAPI 文档（独立 HTTP 或与 Elysia 复用端口）、Prometheus 指标，以及自定义 JSON logger（`examples/custom-logger`）。
 
 ```bash
 bun install
@@ -102,4 +161,20 @@ bun run --cwd examples/aedes-basic dev
 bun run test
 bun run typecheck
 bun run build
+```
+
+## 发布
+
+`scripts/publish.mjs` 会把每个包的本地版本和 npm registry 比较，**只发布**本地版本领先（或 npm 上还不存在）的包；已经同步的包会被静默跳过。
+
+```bash
+bun run publish:status      # 仅打印 local vs npm 状态，不发布
+bun run publish:dry-run     # 跑一次 dry-run 流水线
+bun run publish:packages    # 发布所有需要发布的包
+
+# 指定单个包（同样会先做版本检查）
+bun run publish:core
+
+# 跳过检查强制发布（一般用不到）
+node scripts/publish.mjs --force
 ```
