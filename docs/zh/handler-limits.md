@@ -69,3 +69,5 @@ app.onError(({ phase, error }) => {
 ## 与指标联动
 
 两个 phase 都会落进 [metrics](./metrics) 的 `result: 'error', errorPhase: 'timeout' | 'overload'`，可以直接画丢弃率图，无需自己埋点。
+
+完整可跑示例见 [`examples/metrics-prometheus`](https://github.com/keyp-dev/mqttkit/tree/main/examples/metrics-prometheus)——同时演示了 `timeout` + `concurrency` + Prometheus 指标导出。

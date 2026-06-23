@@ -69,3 +69,5 @@ app.onError(({ phase, error }) => {
 ## Metrics integration
 
 Both phases show up in [metrics](./metrics) as `result: 'error', errorPhase: 'timeout' | 'overload'`, so you can chart drop rates without writing custom counters.
+
+See [`examples/metrics-prometheus`](https://github.com/keyp-dev/mqttkit/tree/main/examples/metrics-prometheus) for a runnable setup that wires `timeout` + `concurrency` + Prometheus exporters together.

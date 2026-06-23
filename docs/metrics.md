@@ -86,6 +86,19 @@ app.onMetric((event) => {
 })
 ```
 
+## Runnable example
+
+[`examples/metrics-prometheus`](https://github.com/keyp-dev/mqttkit/tree/main/examples/metrics-prometheus) wires `onMetric`, `onError`, and `app.getRoutes()` into `prom-client` and serves `/metrics` on port 9090. Use it as a starting template:
+
+```bash
+bun install
+bun run --cwd examples/metrics-prometheus dev
+# MQTT broker on mqtt://localhost:1883
+# Prometheus scrape endpoint on http://localhost:9090/metrics
+```
+
+It exposes `mqtt_dispatch_seconds`, `mqtt_publish_seconds`, `mqtt_inflight`, `mqtt_active_total`, `mqtt_overload_total`, and `mqtt_timeout_total` — enough to alert on backlog, slow handlers, and dropped messages without writing any aggregation glue yourself.
+
 ## Handler safety
 
 Multiple handlers run in registration order and are awaited. If a handler throws, the failure is caught and logged (`[mqttkit] metric handler threw: …`) so a bad exporter cannot break message processing.

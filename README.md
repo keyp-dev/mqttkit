@@ -89,7 +89,7 @@ See the [Getting Started guide](https://mqttkit.keyp.dev/getting-started) for ro
 
 ## Examples
 
-Runnable examples under [`examples/`](./examples) cover the basic TCP / WebSocket broker, lifecycle events, service push, Kafka bridge, schema validation, MQTT 5 RPC, and AsyncAPI docs (standalone HTTP or shared Elysia port).
+Runnable examples under [`examples/`](./examples) cover the basic TCP / WebSocket broker, lifecycle events, service push, Kafka bridge, schema validation, MQTT 5 RPC, AsyncAPI docs (standalone HTTP or shared Elysia port), and Prometheus metrics.
 
 ```bash
 bun install

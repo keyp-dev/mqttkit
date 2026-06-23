@@ -108,6 +108,67 @@ const zhSidebarGroups = GUIDE_SECTIONS.map((section) => ({
   items: section.topics.map((topic) => ({ text: topic.zh, link: `/zh/${topic.id}` })),
 }))
 
+type ExampleEntry = {
+  id: string
+  en: string
+  zh: string
+}
+
+const EXAMPLE_SECTIONS: { en: string; zh: string; items: ExampleEntry[] }[] = [
+  {
+    en: 'Getting Started',
+    zh: '入门',
+    items: [
+      { id: 'aedes-basic', en: 'Aedes Basic (TCP)', zh: 'Aedes 基础 (TCP)' },
+      { id: 'aedes-ws', en: 'Aedes WebSocket', zh: 'Aedes WebSocket' },
+      { id: 'events', en: 'Lifecycle Events', zh: '生命周期事件' },
+    ],
+  },
+  {
+    en: 'Message Handling',
+    zh: '消息处理',
+    items: [
+      { id: 'schema-validation', en: 'Schema Validation', zh: 'Schema 校验' },
+      { id: 'rpc', en: 'MQTT 5 RPC', zh: 'MQTT 5 RPC' },
+    ],
+  },
+  {
+    en: 'Integration',
+    zh: '集成',
+    items: [
+      { id: 'service-push', en: 'Service Push', zh: 'Service Push' },
+      { id: 'kafka-bridge', en: 'Kafka Bridge', zh: 'Kafka Bridge' },
+      { id: 'asyncapi-docs', en: 'AsyncAPI Standalone', zh: 'AsyncAPI 独立服务' },
+      { id: 'asyncapi-elysia', en: 'AsyncAPI + Elysia', zh: 'AsyncAPI + Elysia' },
+    ],
+  },
+  {
+    en: 'Observability',
+    zh: '可观测性',
+    items: [
+      { id: 'metrics-prometheus', en: 'Prometheus Metrics', zh: 'Prometheus 指标' },
+    ],
+  },
+]
+
+const enExampleSidebar = [
+  { text: 'Overview', link: '/examples/' },
+  ...EXAMPLE_SECTIONS.map((section) => ({
+    text: section.en,
+    collapsed: false,
+    items: section.items.map((item) => ({ text: item.en, link: `/examples/${item.id}` })),
+  })),
+]
+
+const zhExampleSidebar = [
+  { text: '总览', link: '/zh/examples/' },
+  ...EXAMPLE_SECTIONS.map((section) => ({
+    text: section.zh,
+    collapsed: false,
+    items: section.items.map((item) => ({ text: item.zh, link: `/zh/examples/${item.id}` })),
+  })),
+]
+
 export default withMermaid({
   title: 'mqttkit',
   description:
@@ -152,12 +213,15 @@ export default withMermaid({
       lang: 'en-US',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/getting-started' },
+          { text: 'Guide', link: '/getting-started', activeMatch: '^/(?!examples|changelog)' },
+          { text: 'Examples', link: '/examples/', activeMatch: '^/examples/' },
           { text: 'Packages', link: `${GITHUB_REPO}/tree/main/packages` },
-          { text: 'Examples', link: `${GITHUB_REPO}/tree/main/examples` },
           { text: 'Changelog', link: '/changelog' },
         ],
-        sidebar: enSidebarGroups,
+        sidebar: {
+          '/examples/': enExampleSidebar,
+          '/': enSidebarGroups,
+        },
         editLink: {
           pattern: `${GITHUB_REPO}/edit/main/docs/:path`,
           text: 'Edit this page on GitHub',
@@ -173,12 +237,13 @@ export default withMermaid({
       link: '/zh/',
       themeConfig: {
         nav: [
-          { text: '指南', link: '/zh/getting-started' },
+          { text: '指南', link: '/zh/getting-started', activeMatch: '^/zh/(?!examples|changelog)' },
+          { text: '示例', link: '/zh/examples/', activeMatch: '^/zh/examples/' },
           { text: '包', link: `${GITHUB_REPO}/tree/main/packages` },
-          { text: '示例', link: `${GITHUB_REPO}/tree/main/examples` },
           { text: '更新日志', link: '/zh/changelog' },
         ],
         sidebar: {
+          '/zh/examples/': zhExampleSidebar,
           '/zh/': zhSidebarGroups,
         },
         outline: { label: '本页目录' },

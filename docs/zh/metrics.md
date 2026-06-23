@@ -86,6 +86,19 @@ app.onMetric((event) => {
 })
 ```
 
+## 可运行示例
+
+[`examples/metrics-prometheus`](https://github.com/keyp-dev/mqttkit/tree/main/examples/metrics-prometheus) 把 `onMetric`、`onError`、`app.getRoutes()` 接到 `prom-client`，并在 9090 端口暴露 `/metrics`，直接当模板用：
+
+```bash
+bun install
+bun run --cwd examples/metrics-prometheus dev
+# MQTT broker: mqtt://localhost:1883
+# Prometheus 抓取地址: http://localhost:9090/metrics
+```
+
+输出了 `mqtt_dispatch_seconds`、`mqtt_publish_seconds`、`mqtt_inflight`、`mqtt_active_total`、`mqtt_overload_total`、`mqtt_timeout_total`——足够覆盖堆积告警、慢 handler、丢消息三个核心维度，不用自己拼聚合逻辑。
+
 ## handler 安全
 
 多个 handler 按注册顺序运行并被 `await`。某个 handler 抛错时会被捕获并打印（`[mqttkit] metric handler threw: …`），不会中断消息处理。

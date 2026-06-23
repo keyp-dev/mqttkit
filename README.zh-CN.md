@@ -89,7 +89,7 @@ router、middleware、events、RPC、Kafka 桥接等详见 [快速开始](https:
 
 ## 示例
 
-[`examples/`](./examples) 下有可运行示例：TCP / WebSocket broker、lifecycle events、service push、Kafka bridge、schema 校验、MQTT 5 RPC、AsyncAPI 文档（独立 HTTP 或与 Elysia 复用端口）。
+[`examples/`](./examples) 下有可运行示例：TCP / WebSocket broker、lifecycle events、service push、Kafka bridge、schema 校验、MQTT 5 RPC、AsyncAPI 文档（独立 HTTP 或与 Elysia 复用端口）、Prometheus 指标。
 
 ```bash
 bun install
