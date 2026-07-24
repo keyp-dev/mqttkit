@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>mqttkit cover</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-0: #0b1020;
+        --bg-1: #131a35;
+        --teal: #2dd4bf;
+        --teal-soft: #99f6e4;
+        --purple: #a78bfa;
+        --pink: #f472b6;
+        --text: #e6eaf2;
+        --muted: #94a3b8;
+        --code-bg: #0a1024;
+        --code-border: rgba(167, 139, 250, 0.25);
+        --kw: #c4b5fd;
+        --fn: #5eead4;
+        --str: #fcd34d;
+        --com: #64748b;
+        --num: #fda4af;
+        --pun: #cbd5e1;
+      }
+      html, body { margin: 0; padding: 0; background: #050714; }
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .cover {
+        width: 1000px;
+        height: 420px;
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(1200px 600px at 85% 110%, rgba(167, 139, 250, 0.18), transparent 60%),
+          radial-gradient(900px 500px at -10% -20%, rgba(45, 212, 191, 0.18), transparent 55%),
+          linear-gradient(135deg, #0b1020 0%, #131a35 100%);
+        display: grid;
+        grid-template-columns: 1fr 1.05fr;
+        gap: 28px;
+        padding: 44px 48px;
+        box-sizing: border-box;
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px);
+        background-size: 40px 40px;
+        mask-image: radial-gradient(800px 400px at 50% 50%, black 40%, transparent 80%);
+      }
+
+      .pulse {
+        position: absolute;
+        width: 360px;
+        height: 360px;
+        right: -100px;
+        top: -120px;
+        border-radius: 50%;
+        background: radial-gradient(closest-side, rgba(244, 114, 182, 0.18), transparent 70%);
+        filter: blur(8px);
+      }
+
+      .left {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 18px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border: 1px solid rgba(45, 212, 191, 0.35);
+        background: rgba(45, 212, 191, 0.08);
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--teal-soft);
+        width: fit-content;
+        letter-spacing: 0.02em;
+      }
+      .badge .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 12px var(--teal);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 56px;
+        line-height: 1.02;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+      }
+      h1 .accent {
+        background: linear-gradient(120deg, var(--teal) 0%, var(--purple) 50%, var(--pink) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .sub {
+        font-size: 19px;
+        line-height: 1.45;
+        color: var(--muted);
+        max-width: 420px;
+        font-weight: 500;
+      }
+      .sub b { color: #e2e8f0; font-weight: 600; }
+
+      .meta {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        font-size: 13.5px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .meta .sep { opacity: 0.4; }
+      .meta b { color: var(--text); font-weight: 600; }
+
+      /* code panel */
+      .right {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .code {
+        width: 100%;
+        background: var(--code-bg);
+        border: 1px solid var(--code-border);
+        border-radius: 14px;
+        box-shadow:
+          0 30px 60px -20px rgba(0, 0, 0, 0.55),
+          0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+        overflow: hidden;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+      }
+      .code .titlebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .code .titlebar .dot {
+        width: 11px; height: 11px; border-radius: 50%;
+      }
+      .code .titlebar .r { background: #ff5f56; }
+      .code .titlebar .y { background: #ffbd2e; }
+      .code .titlebar .g { background: #27c93f; }
+      .code .titlebar .file {
+        margin-left: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        font-family: 'Inter', sans-serif;
+      }
+
+      pre {
+        margin: 0;
+        padding: 14px 18px 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--pun);
+      }
+      .kw { color: var(--kw); }
+      .fn { color: var(--fn); }
+      .str { color: var(--str); }
+      .com { color: var(--com); font-style: italic; }
+      .num { color: var(--num); }
+      .pun { color: var(--pun); }
+      .ty { color: #fda4af; }
+    </style>
+  </head>
+  <body>
+    <div class="cover">
+      <div class="grid"></div>
+      <div class="pulse"></div>
+
+      <div class="left">
+        <div class="badge"><span class="dot"></span>MQTT · Bun · TypeScript</div>
+        <h1>
+          <span class="accent">mqttkit</span>
+        </h1>
+        <div class="sub">
+          <b>Elysia-style application framework</b> for MQTT — ordered middleware, typed topic routes, MQTT 5 RPC, AsyncAPI docs.
+        </div>
+        <div class="meta">
+          <span>mqttkit.keyp.dev</span>
+          <span class="sep">·</span>
+          <span><b>@mqttkit/core</b></span>
+          <span class="sep">·</span>
+          <span>MIT</span>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="code">
+          <div class="titlebar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="file">app.ts</span>
+          </div>
+<pre><span class="kw">const</span> app = <span class="kw">new</span> <span class="fn">MqttApp</span>()
+  .<span class="fn">use</span>(<span class="fn">aedes</span>({ tcp: { port: <span class="num">1883</span> } }))
+  .<span class="fn">use</span>(
+    <span class="fn">router</span>().<span class="fn">topic</span>(<span class="str">'devices/:uid/events'</span>, {
+      publish: ({ params, principal }) =&gt;
+        params.uid === principal?.uid,
+      schema: { body: z.<span class="fn">object</span>({ temperature: z.<span class="fn">number</span>() }) },
+      <span class="kw">async</span> <span class="fn">onMessage</span>(ctx) {
+        <span class="com">// ctx.body.temperature  → number ✓</span>
+        <span class="kw">await</span> ctx.<span class="fn">publish</span>(<span class="str">`server/</span>${ctx.params.uid}<span class="str">/ack`</span>, <span class="str">'ok'</span>)
+      },
+    }),
+  )
+
+<span class="kw">await</span> app.<span class="fn">listen</span>()</pre>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>mqttkit cover — minimal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html, body { margin: 0; padding: 0; background: #050714; }
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .cover {
+        width: 1000px;
+        height: 420px;
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(900px 500px at 80% 100%, rgba(167, 139, 250, 0.22), transparent 60%),
+          radial-gradient(700px 400px at 0% 0%, rgba(45, 212, 191, 0.18), transparent 55%),
+          #0a0f24;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 0 80px;
+        box-sizing: border-box;
+        color: #e6eaf2;
+      }
+      .topo {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: radial-gradient(700px 380px at 50% 50%, black 30%, transparent 80%);
+      }
+      .kicker {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #5eead4;
+        margin-bottom: 18px;
+        z-index: 1;
+      }
+      .kicker .sep { opacity: 0.5; margin: 0 10px; }
+      h1 {
+        margin: 0;
+        font-size: 104px;
+        font-weight: 900;
+        letter-spacing: -0.045em;
+        line-height: 1;
+        background: linear-gradient(120deg, #5eead4 0%, #a78bfa 55%, #f472b6 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        z-index: 1;
+      }
+      .tag {
+        margin-top: 22px;
+        font-size: 24px;
+        font-weight: 600;
+        color: #cbd5e1;
+        max-width: 760px;
+        line-height: 1.35;
+        z-index: 1;
+      }
+      .tag .hi { color: #fff; }
+      .footer {
+        position: absolute;
+        bottom: 26px;
+        left: 0; right: 0;
+        text-align: center;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 13px;
+        color: #64748b;
+        letter-spacing: 0.05em;
+      }
+      .footer b { color: #94a3b8; font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <div class="cover">
+      <div class="topo"></div>
+      <div class="kicker">MQTT <span class="sep">·</span> Bun <span class="sep">·</span> TypeScript</div>
+      <h1>mqttkit</h1>
+      <div class="tag">
+        An <span class="hi">Elysia-style application framework</span> for MQTT.<br />
+        Middleware, typed topic routes, MQTT 5 RPC, AsyncAPI docs.
+      </div>
+      <div class="footer"><b>mqttkit.keyp.dev</b> &nbsp;·&nbsp; github.com/keyp/mqttkit</div>
+    </div>
+  </body>
+</html>
