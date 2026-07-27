@@ -10,6 +10,43 @@ aside: false
 
 格式大致基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## 2026-07-27 — aedes 2.x / MQTT 5 拒绝回执
+
+`@mqttkit/aedes@0.3.0-beta.0`(预发布,`next` dist-tag ——
+`npm i @mqttkit/aedes@next aedes@2`)和 `@mqttkit/asyncapi@0.2.2`。
+
+### 变更 — `@mqttkit/aedes` 0.3.0-beta.0
+
+- **面向 aedes 2.x**(`peerDependencies: aedes >=2.0.0-beta.1 <3`)。破坏性变更:
+  aedes 2.0 纯 ESM 且要求 Node >= 20。适配器改为 import `Aedes` 类(`createBroker`
+  具名导出已被移除),并在 `start()` 里 `await` 新的异步 `broker.listen()`——aedes
+  2.x 把 persistence 初始化和心跳搬到了那里。需自行安装 `aedes@2`。
+- **schema 校验失败改为回 MQTT 5 reason code,而不是断开连接。** 入站派发在
+  `authorizePublish` 里执行(在 broker 回 ack / 转发之前),所以配了
+  `validate: 'inbound'` 的路由会在任何订阅者看到之前就拒绝坏 payload。aedes 2.x 下
+  MQTT 5 发布端会收到 `0x87`(Not authorized)的 PUBACK/PUBREC 且连接不断;v3/v4
+  客户端没有 reason-code 通道,仍以断开处理。
+- **`@mqttkit/core` 从 `dependencies` 挪到 `peerDependencies`。** 适配器是插到
+  用户的 `MqttApp` 上的,core 必须是同一份共享拷贝——否则版本分叉会出现两份
+  `@mqttkit/core` 实例,`app.use(aedes(...))` 类型不通过。现在与 `@mqttkit/zod`、
+  `@mqttkit/typebox` 一致。core 需你自行安装(README 已有说明)。
+
+### 变更 — `@mqttkit/asyncapi` 0.2.2
+
+- **`@mqttkit/core` 从 `dependencies` 挪到 `peerDependencies`**,和上面 `@mqttkit/aedes`
+  同样的修复。作为插到用户 app 上的插件,它必须共用同一份 core。现在与其余所有
+  适配器一致。
+
+### 新增 — 示例
+
+- `examples/aedes-schema-reject` —— 端到端演示:MQTT 5 客户端先发合法、再发非法
+  payload;非法的那条被回 reason code 拒绝,连接保持,handler 不执行。
+
+### 工具
+
+- `scripts/publish.mjs` 会把预发布版本(版本号含 `-`)发到 npm `next` dist-tag,
+  避免 beta 落到 `latest`。
+
 ## 2026-06-23 — 质量优化
 
 `@mqttkit/core@0.2.2`、`@mqttkit/asyncapi@0.2.1`、`@mqttkit/zod@0.1.1`。

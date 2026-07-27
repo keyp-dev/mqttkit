@@ -12,6 +12,47 @@ together stay readable.
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-07-27 — aedes 2.x / MQTT 5 rejections
+
+`@mqttkit/aedes@0.3.0-beta.0` (prerelease, `next` dist-tag —
+`npm i @mqttkit/aedes@next aedes@2`) and `@mqttkit/asyncapi@0.2.2`.
+
+### Changed — `@mqttkit/aedes` 0.3.0-beta.0
+
+- **Targets aedes 2.x** (`peerDependencies: aedes >=2.0.0-beta.1 <3`). Breaking:
+  aedes 2.0 is ESM-only and needs Node >= 20. The adapter now imports the
+  `Aedes` class (the `createBroker` named export was removed) and awaits the new
+  async `broker.listen()` inside `start()` — aedes 2.x moved persistence setup
+  and heartbeat there. Bring your own `aedes@2`.
+- **Schema failures now reject with an MQTT 5 reason code instead of dropping
+  the connection.** Inbound dispatch runs inside `authorizePublish` (before the
+  broker acks/forwards), so a failed `validate: 'inbound'` route rejects the
+  publish before any subscriber sees it. On aedes 2.x an MQTT 5 publisher gets a
+  `0x87` (Not authorized) PUBACK/PUBREC and stays connected; v3/v4 clients have
+  no reason-code channel and are still disconnected.
+- **`@mqttkit/core` moved to `peerDependencies`** (was a regular dependency).
+  The adapter plugs into the user's `MqttApp`, so core must be the single shared
+  copy — otherwise a version split yields two `@mqttkit/core` instances and
+  `app.use(aedes(...))` fails to type-check. Now consistent with `@mqttkit/zod`
+  and `@mqttkit/typebox`. Install core yourself (the README already shows this).
+
+### Changed — `@mqttkit/asyncapi` 0.2.2
+
+- **`@mqttkit/core` moved to `peerDependencies`** (was a regular dependency),
+  the same fix as `@mqttkit/aedes` above. As a plugin over the user's app it
+  must share the single core copy. Now consistent with all other adapters.
+
+### Added — examples
+
+- `examples/aedes-schema-reject` — end-to-end demo: an MQTT 5 client publishes a
+  valid then an invalid payload; the invalid one is rejected with a reason code
+  while the connection stays up and the handler never runs.
+
+### Tooling
+
+- `scripts/publish.mjs` routes prerelease versions (any version containing a `-`)
+  to the npm `next` dist-tag so betas never land on `latest`.
+
 ## 2026-06-23 — quality pass
 
 `@mqttkit/core@0.2.2`, `@mqttkit/asyncapi@0.2.1`, `@mqttkit/zod@0.1.1`.

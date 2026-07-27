@@ -2,7 +2,7 @@ import { createServer as createHttpServer } from 'node:http'
 import type { Server as HttpServer } from 'node:http'
 import { createServer as createNetServer } from 'node:net'
 import type { Server as NetServer } from 'node:net'
-import { createBroker } from 'aedes'
+import { Aedes } from 'aedes'
 import type { Client, PublishPacket, Subscription } from 'aedes'
 import type {
   BrokerStartOptions,
@@ -30,7 +30,7 @@ export class AedesBrokerAdapter<TPrincipal = unknown> implements MqttBrokerAdapt
   private started = false
 
   constructor(private readonly options: AedesAdapterOptions<TPrincipal> = {}) {
-    this.broker = options.instance ?? createBroker({
+    this.broker = options.instance ?? new Aedes({
       ...options.aedes,
       persistence: options.persistence ?? options.aedes?.persistence,
     })
@@ -40,6 +40,11 @@ export class AedesBrokerAdapter<TPrincipal = unknown> implements MqttBrokerAdapt
   async start(runtime: BrokerStartOptions<TPrincipal>): Promise<void> {
     if (this.started) return
     this.runtime = runtime
+    // aedes 2.x moved broker readiness (persistence.setup, heartbeat) into an
+    // async listen(). `new Aedes()` alone leaves persistence undefined, so own
+    // brokers must be listened before they accept connections. A caller-supplied
+    // instance is assumed already listened (e.g. via `await Aedes.createBroker()`).
+    if (this.ownsBroker) await this.broker.listen()
     this.installHooks()
     await this.startTcp(this.options.tcp)
     await this.startWebSocket(this.options.ws)

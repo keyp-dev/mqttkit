@@ -76,9 +76,17 @@ if (!skipChecks) {
 
 for (const packagePath of selected) {
   const publishArgs = ['publish', '--access', 'public']
+  // Prerelease versions (e.g. 0.3.0-beta.0) must NOT land on the `latest`
+  // dist-tag or `npm install <pkg>` would hand everyone a beta. Route anything
+  // with a semver prerelease segment to the `next` tag instead.
+  if (isPrerelease(readPackageVersion(packagePath))) publishArgs.push('--tag', 'next')
   if (dryRun) publishArgs.push('--dry-run')
 
   run('npm', publishArgs, { cwd: resolve(root, packagePath) })
+}
+
+function isPrerelease(version) {
+  return typeof version === 'string' && version.includes('-')
 }
 
 function inspectPackage(packagePath) {

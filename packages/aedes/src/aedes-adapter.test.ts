@@ -181,7 +181,10 @@ describe('@mqttkit/aedes', () => {
     ;(adapter.broker as unknown as {
       publish: (packet: Record<string, unknown>, done: (err?: Error) => void) => void
     }).publish = (packet, done) => {
-      captured.push(packet)
+      // aedes 2.x publishes $SYS/<id>/birth (and periodic heartbeat) through
+      // broker.publish during listen(); ignore broker-internal traffic so the
+      // capture only sees packets mqttkit constructed.
+      if (!String(packet.topic).startsWith('$SYS/')) captured.push(packet)
       done()
     }
 
@@ -227,7 +230,10 @@ describe('@mqttkit/aedes', () => {
     ;(adapter.broker as unknown as {
       publish: (packet: Record<string, unknown>, done: (err?: Error) => void) => void
     }).publish = (packet, done) => {
-      captured.push(packet)
+      // aedes 2.x publishes $SYS/<id>/birth (and periodic heartbeat) through
+      // broker.publish during listen(); ignore broker-internal traffic so the
+      // capture only sees packets mqttkit constructed.
+      if (!String(packet.topic).startsWith('$SYS/')) captured.push(packet)
       done()
     }
 
@@ -252,7 +258,10 @@ describe('@mqttkit/aedes', () => {
     ;(adapter.broker as unknown as {
       publish: (packet: Record<string, unknown>, done: (err?: Error) => void) => void
     }).publish = (packet, done) => {
-      captured.push(packet)
+      // aedes 2.x publishes $SYS/<id>/birth (and periodic heartbeat) through
+      // broker.publish during listen(); ignore broker-internal traffic so the
+      // capture only sees packets mqttkit constructed.
+      if (!String(packet.topic).startsWith('$SYS/')) captured.push(packet)
       done()
     }
 

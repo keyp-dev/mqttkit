@@ -1,6 +1,6 @@
 {
   "name": "@mqttkit/aedes",
-  "version": "0.2.0",
+  "version": "0.3.0-beta.0",
   "type": "module",
   "description": "Aedes TCP and MQTT-over-WebSocket adapter for mqttkit.",
   "license": "MIT",
@@ -36,22 +36,26 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean"
   },
   "dependencies": {
-    "@mqttkit/core": "^0.2.0",
     "websocket-stream": "^5.5.2"
   },
   "devDependencies": {
+    "@mqttkit/core": "workspace:*",
     "@types/ws": "^8.18.1",
-    "aedes": "^0.51.3",
+    "aedes": "2.0.0-beta.1",
     "mqtt": "^5.15.1",
     "ws": "^8.18.3",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "aedes": "^0.51.3"
+    "@mqttkit/core": "^0.2.0",
+    "aedes": ">=2.0.0-beta.1 <3"
   }
 }

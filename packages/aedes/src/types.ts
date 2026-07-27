@@ -1,11 +1,10 @@
 import type { Server as HttpServer } from 'node:http'
 import type { Server as NetServer } from 'node:net'
-import { createBroker } from 'aedes'
-import type { AedesOptions } from 'aedes'
+import type { Aedes, AedesOptions } from 'aedes'
 import type { Client } from 'aedes'
 import type { MqttApp, MqttAppState } from '@mqttkit/core'
 
-export type AedesInstance = ReturnType<typeof createBroker>
+export type AedesInstance = Aedes
 
 export type AedesAuthenticateInput = {
   clientId: string

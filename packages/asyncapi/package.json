@@ -1,6 +1,6 @@
 {
   "name": "@mqttkit/asyncapi",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "AsyncAPI 3.0 documentation generator and HTTP plugin for mqttkit.",
   "license": "MIT",
@@ -40,11 +40,12 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean"
   },
-  "dependencies": {
-    "@mqttkit/core": "^0.2.0"
-  },
   "devDependencies": {
+    "@mqttkit/core": "workspace:*",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@mqttkit/core": "^0.2.0"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@mqttkit/example-asyncapi-elysia",
+  "name": "@mqttkit/example-aedes-schema-reject",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,10 +8,10 @@
   },
   "dependencies": {
     "@mqttkit/aedes": "workspace:*",
-    "@mqttkit/asyncapi": "workspace:*",
-    "@mqttkit/core": "workspace:*",
+    "@mqttkit/core": "workspace:*"
+  },
+  "devDependencies": {
     "aedes": "2.0.0-beta.1",
-    "elysia": "^1.4.29",
     "mqtt": "^5.15.1"
   }
 }
